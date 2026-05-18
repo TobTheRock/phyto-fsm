@@ -1,5 +1,6 @@
 use heck::{ToSnakeCase, ToUpperCamelCase};
 
+use super::naming::RenderedNames;
 use crate::fsm;
 use crate::fsm::{Action, Event};
 
@@ -15,22 +16,18 @@ pub struct Idents {
     pub init_state_id_variant: proc_macro2::Ident,
 }
 
-impl Idents {
-    pub fn new(name: &str) -> Idents {
-        let name = name.to_string();
-        Idents {
-            fsm: quote::format_ident!("{}", name.to_upper_camel_case()),
-            fsm_inner: quote::format_ident!("{}Inner", name.to_upper_camel_case()),
-            module: quote::format_ident!("{}", name.to_snake_case()),
-            event_params_trait: quote::format_ident!("I{}EventParams", name.to_upper_camel_case()),
-            event_enum: quote::format_ident!("{}Event", name.to_upper_camel_case()),
-            action_trait: quote::format_ident!("I{}Actions", name.to_upper_camel_case()),
-            state_struct: quote::format_ident!("{}State", name.to_upper_camel_case()),
-            state_id_enum: quote::format_ident!("{}StateId", name.to_upper_camel_case()),
-            init_state_id_variant: quote::format_ident!(
-                "_{}InitialState_",
-                name.to_upper_camel_case()
-            ),
+impl From<RenderedNames> for Idents {
+    fn from(names: RenderedNames) -> Self {
+        Self {
+            fsm: quote::format_ident!("{}", names.fsm),
+            fsm_inner: quote::format_ident!("{}", names.fsm_inner),
+            module: quote::format_ident!("{}", names.module),
+            event_params_trait: quote::format_ident!("{}", names.event_params_trait),
+            event_enum: quote::format_ident!("{}", names.event_enum),
+            action_trait: quote::format_ident!("{}", names.action_trait),
+            state_struct: quote::format_ident!("{}", names.state_struct),
+            state_id_enum: quote::format_ident!("{}", names.state_id_enum),
+            init_state_id_variant: quote::format_ident!("{}", names.init_state_id_variant),
         }
     }
 }

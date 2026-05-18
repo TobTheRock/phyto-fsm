@@ -48,11 +48,11 @@ fn is_relative_path(file_path: &std::path::Path) -> bool {
     file_path.starts_with("../") || file_path.starts_with("./")
 }
 
-pub struct FsmFile {
+pub struct File {
     content: String,
 }
 
-impl FsmFile {
+impl File {
     pub fn try_open(file_path: FilePath) -> error::Result<Self> {
         let error =
             |e: std::io::Error| error::Error::InvalidFile(file_path.to_string(), e.to_string());
@@ -69,7 +69,7 @@ impl FsmFile {
 #[cfg(test)]
 mod test {
     use crate::{
-        file::{FilePath, FsmFile},
+        file::{File, FilePath},
         test,
     };
 
@@ -92,7 +92,7 @@ mod test {
 
         // TODO use the actual method
         let file_path = FilePath(test_data.path);
-        let fsm_file = FsmFile::try_open(file_path).expect("Failed to open FSM file");
+        let fsm_file = File::try_open(file_path).expect("Failed to open FSM file");
         assert!(
             !fsm_file.content.is_empty(),
             "FSM file content should not be empty"

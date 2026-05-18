@@ -385,7 +385,7 @@ fn generate_trigger_event(ctx: &GenerationContext) -> proc_macro2::TokenStream {
     let action = &ctx.idents.action_trait;
     let event_enum = &ctx.idents.event_enum;
 
-    let event_body = if let Some(log_level) = ctx.options.log_level {
+    let event_body = if let Some(log_level) = ctx.log_level {
         let level = log_level_token(log_level);
         let log_transition = format! {"{}: {{}} -[{{}}]-> {{}}, entering {{}}", ctx.fsm.name()};
         quote::quote! {

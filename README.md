@@ -36,6 +36,7 @@ This way the design of the FSM is easy to grasp first hand and documentation and
 | Direct transitions | Automatic transitions without events, with optional guards and actions | [direct_transitions.rs](https://github.com/TobTheRock/phytofsm/blob/main/tests/direct_transitions.rs) |
 | Deferred events | Events deferred in one state are re-evaluated after transitioning to another state | [deferred_events.rs](https://github.com/TobTheRock/phytofsm/blob/main/tests/deferred_events.rs) |
 | Transition logging | Optional logging via [log](https://docs.rs/log/latest/log/) crate | [four_seasons.rs](https://github.com/TobTheRock/phytofsm/blob/main/tests/four_seasons/main.rs) |
+| Custom naming templates | Override default naming patterns for generated types | [custom_naming.rs](https://github.com/TobTheRock/phytofsm/blob/main/tests/custom_naming.rs) |
 
 ### Missing Features
 
@@ -235,6 +236,12 @@ From the elements given by the custom syntax the following is derived:
 | **Event** | Parameter type | `{EventName}Params` |
 | **Action** (Transition/Enter/Exit) | Method name of the Actions Trait | snake_case of action name |
 | **State** | State name | Preserved as written in PlantUML |
+
+### Custom Naming Templates
+
+The default naming patterns for the core generated types can be customized by providing a naming template file via the `naming` option. The template file uses `{name}` (UpperCamelCase) as placeholder. The `module` value is automatically converted to snake_case. See the [default template](src/codegen/default_naming.tmpl) for the format and [custom_naming](tests/custom_naming.rs) for a usage example.
+
+Note: Event, action, and state element names are not affected by the naming template — they always use the names as written in the PlantUML diagram.
 
 ## Example
 

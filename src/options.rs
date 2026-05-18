@@ -4,11 +4,10 @@ use syn::{
     parse::{Parse, ParseStream},
 };
 
-use crate::codegen;
-
 pub struct Options {
     pub file_path: String,
-    pub codegen: codegen::Options,
+    pub naming_path: Option<String>,
+    pub log_level: Option<log::Level>,
 }
 
 impl Options {
@@ -19,7 +18,8 @@ impl Options {
         }
         Ok(Self {
             file_path,
-            codegen: codegen::Options::default(),
+            naming_path: None,
+            log_level: None,
         })
     }
 
@@ -60,9 +60,27 @@ impl Options {
                 )
             })?;
 
+        let naming_path: Option<String> = parsed_pairs
+            .iter()
+            .filter_map(|pair| {
+                if let OptionKeyValue::Naming(path) = pair {
+                    Some(path.clone())
+                } else {
+                    None
+                }
+            })
+            .at_most_one()
+            .map_err(|_| {
+                syn::Error::new(
+                    input.span(),
+                    "Expected at most one 'naming' key in options",
+                )
+            })?;
+
         Ok(Self {
             file_path: file_path.clone(),
-            codegen: codegen::Options { log_level },
+            naming_path,
+            log_level,
         })
     }
 }
@@ -85,6 +103,7 @@ impl Parse for Options {
 enum OptionKeyValue {
     FilePath(String),
     LogLevel(log::Level),
+    Naming(String),
 }
 
 impl Parse for OptionKeyValue {
@@ -106,9 +125,17 @@ impl Parse for OptionKeyValue {
                 let log_level = parse_log_level(&level_str, lit.span())?;
                 Ok(OptionKeyValue::LogLevel(log_level))
             }
+            "naming" => {
+                let lit: LitStr = input.parse()?;
+                let value = lit.value();
+                if value.trim().is_empty() {
+                    return Err(syn::Error::new(lit.span(), "Naming template path cannot be empty"));
+                }
+                Ok(OptionKeyValue::Naming(value))
+            }
             _ => Err(syn::Error::new(
                 key.span(),
-                "Unknown option key. Expected 'file_path' or 'log_level'",
+                "Unknown option key. Expected 'file_path', 'log_level', or 'naming'",
             )),
         }
     }
@@ -143,7 +170,7 @@ mod test {
     fn parse_file_path_only() {
         let options = try_parse_file_path("path/to/fsm.puml").unwrap();
         assert_eq!(options.file_path, "path/to/fsm.puml");
-        assert_eq!(options.codegen.log_level, None);
+        assert_eq!(options.log_level, None);
     }
 
     #[test]
@@ -160,7 +187,7 @@ mod test {
         let tokens = quote::quote!(file_path = "path/to/fsm.puml");
         let options = Options::parse.parse2(tokens).unwrap();
         assert_eq!(options.file_path, "path/to/fsm.puml");
-        assert_eq!(options.codegen.log_level, None);
+        assert_eq!(options.log_level, None);
     }
 
     #[test]
@@ -168,7 +195,7 @@ mod test {
         let tokens = quote::quote!(file_path = "path/to/fsm.puml", log_level = "error");
         let options = Options::parse.parse2(tokens).unwrap();
         assert_eq!(options.file_path, "path/to/fsm.puml");
-        assert_eq!(options.codegen.log_level, Some(log::Level::Error));
+        assert_eq!(options.log_level, Some(log::Level::Error));
     }
 
     #[test]
@@ -186,5 +213,18 @@ mod test {
         let tokens = quote::quote!(file_path = "path/to/fsm.puml", log_level = "INVALID");
         let result = Options::parse.parse2(tokens);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn parse_naming_option() {
+        let tokens = quote::quote!(
+            file_path = "path/to/fsm.puml",
+            naming = "path/to/naming.tmpl"
+        );
+        let options = Options::parse.parse2(tokens).unwrap();
+        assert_eq!(
+            options.naming_path,
+            Some("path/to/naming.tmpl".to_string())
+        );
     }
 }

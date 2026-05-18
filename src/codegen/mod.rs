@@ -2,66 +2,58 @@ mod deferred;
 mod extract;
 mod generators;
 mod ident;
+pub(crate) mod naming;
 
-use crate::fsm;
+use crate::{error, fsm};
 
 type GeneratedCode = proc_macro2::TokenStream;
 
-#[derive(Default, Debug, Copy, Clone)]
-pub struct Options {
+#[derive(Default, Debug, Clone)]
+pub struct Options<'a> {
     pub log_level: Option<log::Level>,
+    pub naming: naming::NamingTemplate<'a>,
 }
 
-pub struct FsmCodeGenerator {
-    options: Options,
-}
+pub fn generate(fsm: fsm::UmlFsm, options: Options) -> error::Result<GeneratedCode> {
+    let idents: ident::Idents = options.naming.render(fsm.name())?.into();
+    let deferred = deferred::DeferredEventsCodegen::new(&fsm, &idents);
+    let ctx = GenerationContext {
+        fsm: &fsm,
+        deferred: &deferred,
+        idents: &idents,
+        log_level: options.log_level,
+    };
 
-impl FsmCodeGenerator {
-    pub fn new(options: &Options) -> Self {
-        Self { options: *options }
-    }
+    let event_params_trait = generators::generate_event_params_trait(&ctx);
+    let action_trait = generators::generate_action_trait(&ctx);
+    let event_enum = generators::generate_event_enum(&ctx);
+    let event_enum_display = generators::generate_event_enum_display(&ctx);
+    let state_id_enum = generators::generate_state_id_enum(&ctx);
+    let state_struct = generators::generate_state_struct(&ctx);
+    let state_impl = generators::generate_state_impl(&ctx);
+    let fsm = generators::generate_fsm(&ctx);
 
-    pub fn generate(&self, fsm: fsm::UmlFsm) -> GeneratedCode {
-        let idents = ident::Idents::new(fsm.name());
-        let deferred = deferred::DeferredEventsCodegen::new(&fsm, &idents);
-        let ctx = GenerationContext {
-            fsm: &fsm,
-            deferred: &deferred,
-            idents: &idents,
-            options: &self.options,
-        };
-
-        let event_params_trait = generators::generate_event_params_trait(&ctx);
-        let action_trait = generators::generate_action_trait(&ctx);
-        let event_enum = generators::generate_event_enum(&ctx);
-        let event_enum_display = generators::generate_event_enum_display(&ctx);
-        let state_id_enum = generators::generate_state_id_enum(&ctx);
-        let state_struct = generators::generate_state_struct(&ctx);
-        let state_impl = generators::generate_state_impl(&ctx);
-        let fsm = generators::generate_fsm(&ctx);
-
-        let module_name = &idents.module;
-        quote::quote! {
-            mod #module_name {
-                pub type NoEventData = ();
-                #event_params_trait
-                #action_trait
-                #event_enum
-                #event_enum_display
-                #state_id_enum
-                #state_struct
-                #state_impl
-                #fsm
-            }
+    let module_name = &idents.module;
+    Ok(quote::quote! {
+        mod #module_name {
+            pub type NoEventData = ();
+            #event_params_trait
+            #action_trait
+            #event_enum
+            #event_enum_display
+            #state_id_enum
+            #state_struct
+            #state_impl
+            #fsm
         }
-    }
+    })
 }
 
 pub struct GenerationContext<'a> {
     pub fsm: &'a fsm::UmlFsm,
     pub deferred: &'a deferred::DeferredEventsCodegen,
     pub idents: &'a ident::Idents,
-    pub options: &'a Options,
+    pub log_level: Option<log::Level>,
 }
 
 #[cfg(test)]
@@ -69,7 +61,7 @@ mod tests {
     use std::path::Path;
 
     use crate::{
-        codegen::{FsmCodeGenerator, Options},
+        codegen::Options,
         test::FsmTestData,
     };
 
@@ -78,9 +70,7 @@ mod tests {
         options: &Options,
         test_name: &str,
     ) -> std::path::PathBuf {
-        let generator = FsmCodeGenerator::new(options);
-
-        let module_code = generator.generate(test_data.parsed);
+        let module_code = super::generate(test_data.parsed, options.clone()).unwrap();
         let complete_code = format!("#![allow(warnings)] {module_code}\n\nfn main() {{}}\n");
 
         let base_name = format!("target/tests/data/codegen/{test_name}");
@@ -111,6 +101,7 @@ mod tests {
     fn all_generators_logging() {
         let options = Options {
             log_level: Some(log::Level::Info),
+            ..Default::default()
         };
         test_all_generators_with_options(&options, "logging_options");
     }

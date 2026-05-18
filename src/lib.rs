@@ -11,7 +11,7 @@ mod parser;
 #[cfg(test)]
 mod test;
 
-use crate::codegen::FsmCodeGenerator;
+
 
 #[proc_macro]
 /// Parse the given FSM definition file and generate the corresponding Rust code.
@@ -27,6 +27,8 @@ use crate::codegen::FsmCodeGenerator;
 /// #generate_fsm!("path/to/fsm_definition.puml")
 /// // With parameters:
 /// #generate_fsm!(file_path = "path/to/fsm_definition.puml", log_level = "debug")
+/// // With custom naming template:
+/// #generate_fsm!(file_path = "path/to/fsm_definition.puml", naming = "path/to/naming.tmpl")
 ///
 /// # Parameters
 ///
@@ -34,6 +36,7 @@ use crate::codegen::FsmCodeGenerator;
 /// |-----------|-------------|----------
 /// | **file_path** | Path to the FSM definition file. This parameter is required. | None
 /// | **log_level** | Optional log level for state transitions. Possible values: `error`, `warn`, `info`, `debug`, `trace`. If not set, no logging is performed. | None
+/// | **naming** | Path to a custom naming template file that controls how generated types are named. See the README for the template format. | Built-in default
 ///
 ///
 /// ```
@@ -94,10 +97,29 @@ fn generate_fsm_inner(input: TokenStream) -> error::Result<TokenStream> {
     let options: options::Options =
         syn::parse(input).map_err(|e| error::Error::InvalidInput(e.to_string()))?;
     let file_path = file::FilePath::resolve(&options.file_path, proc_macro::Span::call_site());
-    let file = file::FsmFile::try_open(file_path)?;
+    let file = file::File::try_open(file_path)?;
     let parsed_fsm = fsm::UmlFsm::try_parse(file.content())?;
-    let generator = FsmCodeGenerator::new(&options.codegen);
-    let fsm_code = generator.generate(parsed_fsm);
+
+    let naming_file = options
+        .naming_path
+        .as_ref()
+        .map(|path| {
+            let fp = file::FilePath::resolve(path, proc_macro::Span::call_site());
+            file::File::try_open(fp)
+        })
+        .transpose()?;
+
+    let naming = match &naming_file {
+        Some(f) => codegen::naming::NamingTemplate::from(f),
+        None => codegen::naming::NamingTemplate::default(),
+    };
+
+    let codegen_options = codegen::Options {
+        naming,
+        log_level: options.log_level,
+    };
+
+    let fsm_code = codegen::generate(parsed_fsm, codegen_options)?;
 
     Ok(fsm_code.into())
 }

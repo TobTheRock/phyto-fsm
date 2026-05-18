@@ -8,4 +8,6 @@ pub enum Error {
     InvalidFile(String, String),
     #[error("Parse error: {0}")]
     Parse(String),
+    #[error("Naming template error: {0}")]
+    NamingTemplate(#[from] crate::codegen::naming::NamingError),
 }
