@@ -60,10 +60,7 @@ pub struct GenerationContext<'a> {
 mod tests {
     use std::path::Path;
 
-    use crate::{
-        codegen::Options,
-        test::FsmTestData,
-    };
+    use crate::{codegen::Options, test::FsmTestData};
 
     fn create_codegen_test(
         test_data: FsmTestData,

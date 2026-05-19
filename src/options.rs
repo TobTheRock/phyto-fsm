@@ -71,10 +71,7 @@ impl Options {
             })
             .at_most_one()
             .map_err(|_| {
-                syn::Error::new(
-                    input.span(),
-                    "Expected at most one 'naming' key in options",
-                )
+                syn::Error::new(input.span(), "Expected at most one 'naming' key in options")
             })?;
 
         Ok(Self {
@@ -129,7 +126,10 @@ impl Parse for OptionKeyValue {
                 let lit: LitStr = input.parse()?;
                 let value = lit.value();
                 if value.trim().is_empty() {
-                    return Err(syn::Error::new(lit.span(), "Naming template path cannot be empty"));
+                    return Err(syn::Error::new(
+                        lit.span(),
+                        "Naming template path cannot be empty",
+                    ));
                 }
                 Ok(OptionKeyValue::Naming(value))
             }
@@ -222,9 +222,6 @@ mod test {
             naming = "path/to/naming.tmpl"
         );
         let options = Options::parse.parse2(tokens).unwrap();
-        assert_eq!(
-            options.naming_path,
-            Some("path/to/naming.tmpl".to_string())
-        );
+        assert_eq!(options.naming_path, Some("path/to/naming.tmpl".to_string()));
     }
 }

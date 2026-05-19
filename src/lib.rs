@@ -11,73 +11,19 @@ mod parser;
 #[cfg(test)]
 mod test;
 
-
-
-#[proc_macro]
-/// Parse the given FSM definition file and generate the corresponding Rust code.
-///
-/// The input to this macro is the path a file containing the FSM definition.
-/// Currently, only PlantUML state machine diagrams are supported.
-/// This will generate an FSM implementation and traits for events and actions, which the use has
-/// to implement.
-///
-///  # Syntax
-/// ```ignore
-/// // With default parameters:
-/// #generate_fsm!("path/to/fsm_definition.puml")
-/// // With parameters:
-/// #generate_fsm!(file_path = "path/to/fsm_definition.puml", log_level = "debug")
-/// // With custom naming template:
-/// #generate_fsm!(file_path = "path/to/fsm_definition.puml", naming = "path/to/naming.tmpl")
+/// Generate a finite state machine from a PlantUML state diagram.
 ///
 /// # Parameters
 ///
-/// | Parameter | Description |  Default
-/// |-----------|-------------|----------
-/// | **file_path** | Path to the FSM definition file. This parameter is required. | None
-/// | **log_level** | Optional log level for state transitions. Possible values: `error`, `warn`, `info`, `debug`, `trace`. If not set, no logging is performed. | None
-/// | **naming** | Path to a custom naming template file that controls how generated types are named. See the README for the template format. | Built-in default
+/// | Parameter | Description | Default |
+/// |-----------|-------------|---------|
+/// | **file_path** | Path to the FSM definition file. Required. | — |
+/// | **log_level** | Log level for state transitions: `error`, `warn`, `info`, `debug`, `trace`. | None |
+/// | **naming** | Path to a custom naming template file. | Built-in default |
 ///
-///
-/// ```
-/// # Generated Code
-///
-/// | Generated Item | Naming Pattern | Description |
-/// |---------------|----------------|-------------|
-/// | **FSM Struct** | `{DiagramName}` | Main state machine struct (UpperCamelCase) |
-/// | **Event Parameters Trait** | `I{DiagramName}EventParams` | Trait defining event parameter types |
-/// | **Actions Trait** | `I{DiagramName}Actions` | Trait defining action methods |
-/// | **Event Enum** | `{DiagramName}Event` | Enum containing all possible events |
-/// | **State Struct** | `{DiagramName}State` | Internal state representation |
-/// | **Module** | `{diagram_name}` | Generated module name (snake_case) |
-///
-/// # Example
-///
-/// ```rust,ignore
-/// use phyto_fsm::generate_fsm;
-/// generate_fsm!("path/to/fsm_definition.puml");
-///
-/// use my_fsm::*; // Import generated module
-///
-/// struct MyActions;
-/// impl IMyFsmActions for MyActions {
-///     fn some_action(&mut self, params: SomeEventParams) {
-///         // Implement action logic here
-///     }
-///     // Implement other actions...
-/// }
-///
-/// impl IMyFsmEventParams for MyActions {
-///     type SomeEventParams = NoEventData;
-///     type OtherEventParams = String;
-///     // Define other event parameter types...
-/// }
-///
-/// let actions = MyActions;
-/// let mut fsm = MyFsm::new(actions);
-/// fsm.trigger_event(MyFsmEvent::SomeEvent(()));
-/// fsm.trigger_event(MyFsmEvent::OtherEvent("data".to_string()));
-/// ```
+/// See the [crate-level documentation](index.html) for full details.
+#[doc = include_str!("../README.md")]
+#[proc_macro]
 pub fn generate_fsm(input: TokenStream) -> TokenStream {
     match generate_fsm_inner(input) {
         Ok(tokens) => tokens,

@@ -92,7 +92,7 @@ StateA --> StateC : Change [IsFull] / GoToC
 
 The generated actions trait will include guard methods with the signature:
 
-```rust
+```rust,ignore
 fn guard_name(&self, event: &Self::EventNameParams) -> bool;
 ```
 
@@ -132,7 +132,7 @@ When multiple guarded direct transitions exist on a state, they are evaluated in
 
 Direct transition actions and guards have no event parameters:
 
-```rust
+```rust,ignore
 fn action_name(&mut self);
 fn guard_name(&self) -> bool;
 ```
@@ -210,7 +210,7 @@ When you use `generate_fsm!("path/to/diagram.puml")`, the macro generates variou
 
 For a PlantUML diagram whose name is given by:
 
-```
+```text
 @startuml DiagramName
 ...
 @enduml
@@ -291,7 +291,7 @@ Autumn --> Winter : TimeAdvances [EnoughTimePassed] / DropPetals
 
 ### 2. Generate the state machine
 
-```rust
+```rust,ignore
 use phyto_fsm::generate_fsm;
 
 // Generate FSM from PlantUML file
@@ -303,7 +303,7 @@ generate_fsm!(
 
 ### 3. Implement your actions
 
-```rust
+```rust,ignore
 use plant_fsm::{IPlantFsmActions, IPlantFsmEventParams, NoEventData};
 
 struct PlantActions;
@@ -356,7 +356,7 @@ impl IPlantFsmActions for PlantActions {
 
 ### 4. Use your state machine
 
-```rust
+```rust,ignore
 fn main() {
     let actions = PlantActions;
     // Creating the FSM triggers winter_is_coming() enter action
