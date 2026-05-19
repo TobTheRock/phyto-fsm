@@ -2,7 +2,9 @@ mod deferred;
 mod extract;
 mod generators;
 mod ident;
-pub(crate) mod naming;
+mod naming;
+
+pub use naming::NamingTemplate;
 
 use crate::{error, fsm};
 

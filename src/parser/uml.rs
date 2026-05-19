@@ -2,9 +2,11 @@ use pest::Parser;
 use pest_derive::Parser;
 
 use crate::{
-    error::{Error, Result},
+    error::Result,
     fsm::{Action, Event},
 };
+
+use super::error::ParseError;
 
 #[derive(Parser)]
 #[grammar = "parser/uml.pest"]
@@ -26,14 +28,14 @@ pub enum StateDescription {
 }
 
 impl TryFrom<&str> for TransitionLabel {
-    type Error = Error;
+    type Error = crate::error::Error;
     fn try_from(value: &str) -> Result<Self> {
         parse_transition_description(value)
     }
 }
 
 impl TryFrom<&String> for TransitionLabel {
-    type Error = Error;
+    type Error = crate::error::Error;
 
     fn try_from(value: &String) -> Result<Self> {
         Self::try_from(value.as_str())
@@ -42,7 +44,7 @@ impl TryFrom<&String> for TransitionLabel {
 
 fn parse_transition_description(input: &str) -> Result<TransitionLabel> {
     let mut pairs = UmlParser::parse(Rule::transition_description, input)
-        .map_err(|e| Error::Parse(format!("Invalid transition description: {}", e)))?;
+        .map_err(|e| ParseError::InvalidTransitionDescription(e.to_string()))?;
 
     let label_pair = pairs
         .next()
@@ -50,28 +52,26 @@ fn parse_transition_description(input: &str) -> Result<TransitionLabel> {
             p.into_inner()
                 .find(|p| p.as_rule() == Rule::transition_label)
         })
-        .ok_or_else(|| Error::Parse(format!("Invalid transition description: {}", input)))?;
+        .ok_or_else(|| ParseError::InvalidTransitionDescription(input.to_string()))?;
 
     let label = extract_transition_label(label_pair);
 
     if label.event.is_none() && label.action.is_none() && label.guard.is_none() {
-        return Err(Error::Parse(
-            "Transition must have at least an event, guard, or action".to_string(),
-        ));
+        return Err(ParseError::EmptyTransition.into());
     }
 
     Ok(label)
 }
 
 impl TryFrom<&str> for StateDescription {
-    type Error = Error;
+    type Error = crate::error::Error;
     fn try_from(value: &str) -> Result<Self> {
         parse_state_description(value)
     }
 }
 
 impl TryFrom<&String> for StateDescription {
-    type Error = Error;
+    type Error = crate::error::Error;
     fn try_from(value: &String) -> Result<Self> {
         Self::try_from(value.as_str())
     }
@@ -79,11 +79,11 @@ impl TryFrom<&String> for StateDescription {
 
 fn parse_state_description(input: &str) -> Result<StateDescription> {
     let mut pairs = UmlParser::parse(Rule::state_description, input)
-        .map_err(|e| Error::Parse(format!("Invalid state description: {}", e)))?;
+        .map_err(|e| ParseError::InvalidStateDescription(e.to_string()))?;
 
     let inner = pairs
         .next()
-        .ok_or_else(|| Error::Parse(format!("Unrecognised state description: {}", input)))?;
+        .ok_or_else(|| ParseError::UnrecognisedStateDescription(input.to_string()))?;
 
     for pair in inner.into_inner() {
         return match pair.as_rule() {
@@ -92,10 +92,7 @@ fn parse_state_description(input: &str) -> Result<StateDescription> {
             Rule::transition_label => {
                 let label = extract_transition_label(pair);
                 if label.event.is_none() && label.action.is_none() && label.guard.is_none() {
-                    return Err(Error::Parse(format!(
-                        "Unrecognised state description: {}",
-                        input
-                    )));
+                    return Err(ParseError::UnrecognisedStateDescription(input.to_string()).into());
                 }
                 Ok(StateDescription::InternalTransition(label))
             }
@@ -103,24 +100,21 @@ fn parse_state_description(input: &str) -> Result<StateDescription> {
         };
     }
 
-    Err(Error::Parse(format!(
-        "Unrecognised state description: {}",
-        input
-    )))
+    Err(ParseError::UnrecognisedStateDescription(input.to_string()).into())
 }
 
 fn parse_state_action(pair: pest::iterators::Pair<Rule>) -> Result<StateDescription> {
     let action_pair = pair
         .into_inner()
         .next()
-        .ok_or_else(|| Error::Parse("Expected entry or exit action".to_string()))?;
+        .ok_or(ParseError::MissingStateAction)?;
 
     let rule = action_pair.as_rule();
     let action = action_pair
         .into_inner()
         .find(|p| p.as_rule() == Rule::action_name)
         .map(|p| p.as_str().to_owned().into())
-        .ok_or_else(|| Error::Parse("Action name is required".to_string()))?;
+        .ok_or(ParseError::MissingActionName)?;
 
     match rule {
         Rule::entry_action => Ok(StateDescription::Entry(action)),
@@ -155,7 +149,7 @@ fn parse_defer_event(pair: pest::iterators::Pair<Rule>) -> Result<StateDescripti
         .into_inner()
         .find(|p| p.as_rule() == Rule::event_name)
         .map(|p| Event(p.as_str().to_owned()))
-        .ok_or_else(|| Error::Parse("Event name is required".to_string()))?;
+        .ok_or_else(|| ParseError::MissingEventName)?;
 
     Ok(StateDescription::DeferEvent(event))
 }

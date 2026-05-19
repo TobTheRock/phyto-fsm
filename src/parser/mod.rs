@@ -1,6 +1,7 @@
 use crate::error::{Error, Result};
 use crate::fsm::{StateId, StateType, TransitionParameters, UmlFsm, UmlFsmBuilder};
 
+mod error;
 mod plantuml;
 mod uml;
 

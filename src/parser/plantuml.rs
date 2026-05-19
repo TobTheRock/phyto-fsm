@@ -1,7 +1,9 @@
 use pest::Parser;
 use pest_derive::Parser;
 
-use crate::error::{Error, Result};
+use crate::error::Result;
+
+use super::error::ParseError;
 
 #[derive(Debug, PartialEq)]
 pub struct StateDiagram<'a> {
@@ -46,12 +48,10 @@ struct PlantUmlParser;
 
 impl StateDiagram<'_> {
     pub fn parse(input: &str) -> Result<StateDiagram<'_>> {
-        let mut pairs =
-            PlantUmlParser::parse(Rule::diagram, input).map_err(|e| Error::Parse(e.to_string()))?;
+        let mut pairs = PlantUmlParser::parse(Rule::diagram, input)
+            .map_err(|e| ParseError::Grammar(e.to_string()))?;
 
-        let diagram_pair = pairs
-            .next()
-            .ok_or_else(|| Error::Parse("Empty input".to_string()))?;
+        let diagram_pair = pairs.next().ok_or(ParseError::EmptyInput)?;
 
         let mut name = None;
         let mut root = StateElements::default();
@@ -154,10 +154,8 @@ fn parse_transition(pair: Pair<'_>) -> Result<TransitionDescription<'_>> {
     }
 
     Ok(TransitionDescription {
-        source: from
-            .ok_or_else(|| Error::Parse("Missing source state in transition".to_string()))?,
-        target: to
-            .ok_or_else(|| Error::Parse("Missing destination state in transition".to_string()))?,
+        source: from.ok_or_else(|| ParseError::MissingSourceState)?,
+        target: to.ok_or_else(|| ParseError::MissingDestinationState)?,
         description,
     })
 }
@@ -179,7 +177,7 @@ fn parse_composite_state(pair: Pair<'_>) -> Result<CompositeState<'_>> {
     }
 
     Ok(CompositeState {
-        name: name.ok_or_else(|| Error::Parse("Missing name in composite state".to_string()))?,
+        name: name.ok_or_else(|| ParseError::MissingCompositeStateName)?,
         elements,
     })
 }
@@ -203,10 +201,8 @@ fn parse_state_description(
     }
 
     Ok(StateDescription {
-        name: name
-            .ok_or_else(|| Error::Parse("Missing state name in state description".to_string()))?,
-        description: description
-            .ok_or_else(|| Error::Parse("Missing description in state description".to_string()))?,
+        name: name.ok_or_else(|| ParseError::MissingStateName)?,
+        description: description.ok_or_else(|| ParseError::MissingDescription)?,
     })
 }
 

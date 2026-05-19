@@ -30,6 +30,12 @@ pub enum NamingError {
     RenderError(String),
 }
 
+impl From<NamingError> for crate::error::Error {
+    fn from(e: NamingError) -> Self {
+        Self::NamingTemplate(e.to_string())
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct RenderedNames {
     pub fsm: String,

@@ -56,8 +56,8 @@ fn generate_fsm_inner(input: TokenStream) -> error::Result<TokenStream> {
         .transpose()?;
 
     let naming = match &naming_file {
-        Some(f) => codegen::naming::NamingTemplate::from(f),
-        None => codegen::naming::NamingTemplate::default(),
+        Some(f) => codegen::NamingTemplate::from(f),
+        None => codegen::NamingTemplate::default(),
     };
 
     let codegen_options = codegen::Options {

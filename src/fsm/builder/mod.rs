@@ -1,11 +1,14 @@
 use itertools::Itertools;
 use log::{debug, trace};
 
-use crate::error::{Error, Result};
+use crate::error::Result;
+
+use self::error::BuildError;
 
 use super::model::{StateData, StateId, TransitionData, TransitionParameters, UmlFsm};
 use super::types::{Action, Event, StateType};
 
+mod error;
 mod inheritance;
 mod scoped_arena;
 mod validation;
@@ -130,7 +133,7 @@ impl UmlFsmBuilder {
 
         let name = self.name;
         if name.trim().is_empty() {
-            return Err(Error::Parse("FSM name cannot be empty".to_string()));
+            return Err(BuildError::EmptyName.into());
         }
 
         Ok(UmlFsm::new(name, enter_state, self.arena.into_inner()))
@@ -179,9 +182,7 @@ impl UmlFsmBuilder {
             .exactly_one()
             .map_err(|_| {
                 let names: String = Itertools::intersperse(enter_state_names(), ", ").collect();
-                Error::Parse(format!(
-                    "FSM must have exactly one enter state, found {names}"
-                ))
+                BuildError::InvalidEnterStates(names)
             })?;
 
         Ok(self.find_deepest_enter_state(root_enter))

@@ -1,7 +1,9 @@
 use itertools::Itertools;
 
-use crate::error::{Error, Result};
+use crate::error::Result;
 use crate::fsm::types::{Action, Event};
+
+use super::error::BuildError;
 
 use super::scoped_arena::ScopedArena;
 use crate::fsm::model::StateData;
@@ -30,10 +32,7 @@ pub fn injective_action_mapping(arena: &ScopedArena<StateData>) -> Result<()> {
                     ", ".to_owned(),
                 )
                 .collect();
-                Err(Error::Parse(format!(
-                    "Action {} is associated with multiple events: {events}",
-                    action.0
-                )))
+                Err(BuildError::MultipleEventsPerAction { action, events }.into())
             }
         })
 }
@@ -43,10 +42,11 @@ pub fn no_conflicting_transitions(arena: &ScopedArena<StateData>) -> Result<()> 
         let has_guards = guards.len() > 1;
         let all_transitions_guarded = guards.iter().all(|g| g.is_some());
         if has_guards && !all_transitions_guarded {
-            return Err(Error::Parse(format!(
-                "State '{}' has multiple transitions for event {:?}",
-                state_name, event
-            )));
+            return Err(BuildError::ConflictingTransitions {
+                state: state_name.to_string(),
+                event: event.clone(),
+            }
+            .into());
         }
         Ok(())
     })
@@ -55,10 +55,7 @@ pub fn no_conflicting_transitions(arena: &ScopedArena<StateData>) -> Result<()> 
 pub fn unique_guards_per_event(arena: &ScopedArena<StateData>) -> Result<()> {
     for_each_transition_group(arena, |_state_name, event, guards| {
         if !guards.iter().all_unique() {
-            return Err(Error::Parse(format!(
-                "Duplicate guard for event {:?}",
-                event
-            )));
+            return Err(BuildError::DuplicateGuard(event.clone()).into());
         }
         Ok(())
     })
