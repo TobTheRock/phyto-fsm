@@ -2,10 +2,10 @@ use proc_macro::TokenStream;
 use quote::quote;
 
 mod codegen;
+mod debug;
 mod error;
 mod file;
 mod fsm;
-mod logging;
 mod options;
 mod parser;
 #[cfg(test)]
@@ -38,8 +38,6 @@ pub fn generate_fsm(input: TokenStream) -> TokenStream {
 }
 
 fn generate_fsm_inner(input: TokenStream) -> error::Result<TokenStream> {
-    logging::init();
-
     let options: options::Options =
         syn::parse(input).map_err(|e| error::Error::InvalidInput(e.to_string()))?;
     let file_path = file::FilePath::resolve(&options.file_path, proc_macro::Span::call_site());

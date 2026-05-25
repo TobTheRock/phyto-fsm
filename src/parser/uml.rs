@@ -149,7 +149,7 @@ fn parse_defer_event(pair: pest::iterators::Pair<Rule>) -> Result<StateDescripti
         .into_inner()
         .find(|p| p.as_rule() == Rule::event_name)
         .map(|p| Event(p.as_str().to_owned()))
-        .ok_or_else(|| ParseError::MissingEventName)?;
+        .ok_or(ParseError::MissingEventName)?;
 
     Ok(StateDescription::DeferEvent(event))
 }

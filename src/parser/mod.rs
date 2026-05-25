@@ -5,7 +5,7 @@ mod error;
 mod plantuml;
 mod uml;
 
-use log::trace;
+use crate::debug::debug;
 
 impl UmlFsm {
     pub fn try_parse<C>(content: C) -> Result<UmlFsm>
@@ -13,7 +13,7 @@ impl UmlFsm {
         C: AsRef<str>,
     {
         let diagram = plantuml::StateDiagram::parse(content.as_ref())?;
-        trace!("Parsed PlantUML diagram: {:#?}", diagram);
+        debug!("Parsed PlantUML diagram: {:#?}", diagram);
         diagram.try_into()
     }
 }
@@ -121,7 +121,6 @@ mod test {
 
     #[test_casing(12, FSM_CASES)]
     fn parses_fsm(data: FsmTestData) {
-        crate::logging::init();
         let fsm = UmlFsm::try_parse(data.content).unwrap();
         assert_eq!(data.parsed, fsm);
     }

@@ -154,8 +154,8 @@ fn parse_transition(pair: Pair<'_>) -> Result<TransitionDescription<'_>> {
     }
 
     Ok(TransitionDescription {
-        source: from.ok_or_else(|| ParseError::MissingSourceState)?,
-        target: to.ok_or_else(|| ParseError::MissingDestinationState)?,
+        source: from.ok_or(ParseError::MissingSourceState)?,
+        target: to.ok_or(ParseError::MissingDestinationState)?,
         description,
     })
 }
@@ -177,7 +177,7 @@ fn parse_composite_state(pair: Pair<'_>) -> Result<CompositeState<'_>> {
     }
 
     Ok(CompositeState {
-        name: name.ok_or_else(|| ParseError::MissingCompositeStateName)?,
+        name: name.ok_or(ParseError::MissingCompositeStateName)?,
         elements,
     })
 }
@@ -201,8 +201,8 @@ fn parse_state_description(
     }
 
     Ok(StateDescription {
-        name: name.ok_or_else(|| ParseError::MissingStateName)?,
-        description: description.ok_or_else(|| ParseError::MissingDescription)?,
+        name: name.ok_or(ParseError::MissingStateName)?,
+        description: description.ok_or(ParseError::MissingDescription)?,
     })
 }
 

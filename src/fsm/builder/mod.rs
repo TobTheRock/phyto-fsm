@@ -1,6 +1,6 @@
 use itertools::Itertools;
-use log::{debug, trace};
 
+use crate::debug::debug;
 use crate::error::Result;
 
 use self::error::BuildError;
@@ -113,7 +113,7 @@ impl UmlFsmBuilder {
     }
 
     pub fn build(mut self) -> Result<UmlFsm> {
-        trace!(
+        debug!(
             "All states: {:?}",
             self.arena
                 .iter()
@@ -174,7 +174,7 @@ impl UmlFsmBuilder {
             .filter(|node| node.get().state_type == StateType::Enter);
         let enter_state_names = || enter_states.clone().map(|node| node.get().name.as_str());
 
-        trace!("Root enter states: {:?}", enter_state_names().collect_vec());
+        debug!("Root enter states: {:?}", enter_state_names().collect_vec());
 
         let root_enter = enter_states
             .clone()
@@ -217,7 +217,7 @@ impl UmlFsmBuilder {
     fn update_non_simple_state_type(&mut self, id: StateId, state_type: StateType, name: &str) {
         let current_type = self.arena[id].get().state_type;
         if state_type != StateType::Simple && current_type == StateType::Simple {
-            log::debug!(
+            debug!(
                 "Updating Type of state '{}' from {:?} to {:?}",
                 name,
                 current_type,
@@ -225,7 +225,7 @@ impl UmlFsmBuilder {
             );
             self.arena[id].get_mut().state_type = state_type;
         } else if state_type != StateType::Simple && current_type != state_type {
-            log::warn!(
+            debug!(
                 "State '{}' already has type {:?}, ignoring {:?}",
                 name,
                 current_type,

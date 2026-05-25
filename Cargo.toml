@@ -16,7 +16,6 @@ proc-macro = true
 
 [dependencies]
 derive_more = { version = "2.0", features = ["from", "into", "display"] }
-env_logger = "0.11"
 heck = "0.5"
 serde = { version = "1", features = ["derive"] }
 tinytemplate = "1.2"
@@ -35,6 +34,5 @@ mockall = "0.13"
 pretty_assertions = "1.4"
 proptest = "1"
 stderrlog = "0.6"
-mock-logger = "0.1"
 test-casing = "0.1"
 trybuild = "1.0"
