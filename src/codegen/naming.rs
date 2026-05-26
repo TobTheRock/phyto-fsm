@@ -228,8 +228,8 @@ init_state_id_variant = _{name}InitialState_
         assert_eq!(names.event_params_trait, "IMyFsmEventParams");
         assert_eq!(names.event_enum, "MyFsmEvent");
         assert_eq!(names.action_trait, "IMyFsmActions");
-        assert_eq!(names.state_struct, "MyFsmState");
-        assert_eq!(names.state_id_enum, "MyFsmStateId");
+        assert_eq!(names.state_struct, "MyFsmStateNode");
+        assert_eq!(names.state_id_enum, "MyFsmState");
         assert_eq!(names.init_state_id_variant, "_MyFsmInitialState_");
     }
 

@@ -80,10 +80,27 @@ fn test_transitions() {
     actions.expect_start_blizzard().never();
 
     let mut fsm = plant_fsm::start(actions);
+    assert_eq!(
+        fsm.current_state(),
+        plant_fsm::PlantFsmState::WinterFreezing
+    );
+
     fsm.temperature_rises(());
+    assert_eq!(fsm.current_state(), plant_fsm::PlantFsmState::WinterMild);
+
     fsm.time_advances(time);
+    assert_eq!(fsm.current_state(), plant_fsm::PlantFsmState::SpringBrisk);
+
     fsm.time_advances(time);
+    assert_eq!(fsm.current_state(), plant_fsm::PlantFsmState::SummerBalmy);
+
     fsm.temperature_drops(());
     fsm.time_advances(time);
+    assert_eq!(fsm.current_state(), plant_fsm::PlantFsmState::AutumnCrisp);
+
     fsm.time_advances(time);
+    assert_eq!(
+        fsm.current_state(),
+        plant_fsm::PlantFsmState::WinterFreezing
+    );
 }

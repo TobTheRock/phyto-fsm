@@ -128,7 +128,7 @@ pub fn generate_state_id_enum(ctx: &GenerationContext) -> proc_macro2::TokenStre
 
     quote::quote! {
         #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-        enum #state_id_enum {
+        pub enum #state_id_enum {
             #(#variants)*
             #init_state_id_variant,
         }
@@ -302,6 +302,7 @@ pub fn generate_fsm(ctx: &GenerationContext) -> proc_macro2::TokenStream {
     let fsm_inner = &ctx.idents.fsm_inner;
     let action = &ctx.idents.action_trait;
     let state = &ctx.idents.state_struct;
+    let state_id_enum = &ctx.idents.state_id_enum;
     let event_enum = &ctx.idents.event_enum;
     let event_params_trait = &ctx.idents.event_params_trait;
 
@@ -365,6 +366,10 @@ pub fn generate_fsm(ctx: &GenerationContext) -> proc_macro2::TokenStream {
         where
             A: #action,
         {
+            pub fn current_state(&self) -> #state_id_enum {
+                self.0.current_state.id
+            }
+
             #(#methods)*
         }
 
