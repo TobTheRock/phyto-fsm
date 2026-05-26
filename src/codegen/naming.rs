@@ -8,12 +8,9 @@ use crate::file;
 
 const REQUIRED_KEYS: &[&str] = &[
     "fsm",
-    "fsm_inner",
     "module",
     "event_params_trait",
-    "event_enum",
     "action_trait",
-    "state_struct",
     "state_id_enum",
     "init_state_id_variant",
 ];
@@ -39,12 +36,9 @@ impl From<NamingError> for crate::error::Error {
 #[derive(Clone, Debug)]
 pub struct RenderedNames {
     pub fsm: String,
-    pub fsm_inner: String,
     pub module: String,
     pub event_params_trait: String,
-    pub event_enum: String,
     pub action_trait: String,
-    pub state_struct: String,
     pub state_id_enum: String,
     pub init_state_id_variant: String,
 }
@@ -136,12 +130,9 @@ impl NamingTemplate<'_> {
 
         Ok(RenderedNames {
             fsm: render_value(&entries["fsm"])?,
-            fsm_inner: render_value(&entries["fsm_inner"])?,
             module: render_value(&entries["module"])?.to_snake_case(),
             event_params_trait: render_value(&entries["event_params_trait"])?,
-            event_enum: render_value(&entries["event_enum"])?,
             action_trait: render_value(&entries["action_trait"])?,
-            state_struct: render_value(&entries["state_struct"])?,
             state_id_enum: render_value(&entries["state_id_enum"])?,
             init_state_id_variant: render_value(&entries["init_state_id_variant"])?,
         })
@@ -168,12 +159,9 @@ module = {name}";
     fn error_on_malformed_line() {
         let bad = "\
 fsm {name}
-fsm_inner = {name}Inner
 module = {name}
 event_params_trait = I{name}EventParams
-event_enum = {name}Event
 action_trait = I{name}Actions
-state_struct = {name}State
 state_id_enum = {name}StateId
 init_state_id_variant = _{name}InitialState_";
         let template = NamingTemplate { content: bad };
@@ -185,12 +173,9 @@ init_state_id_variant = _{name}InitialState_";
     fn error_on_unknown_key() {
         let bad = "\
 fsm = {name}
-fsm_inner = {name}Inner
 module = {name}
 event_params_trait = I{name}EventParams
-event_enum = {name}Event
 action_trait = I{name}Actions
-state_struct = {name}State
 state_id_enum = {name}StateId
 init_state_id_variant = _{name}InitialState_
 bogus_key = Something";
@@ -203,13 +188,10 @@ bogus_key = Something";
     fn blank_lines_and_whitespace_are_ignored() {
         let spaced = "\
   fsm = {name}
-fsm_inner = {name}Inner
 
 module = {name}
   event_params_trait = I{name}EventParams
-event_enum = {name}Event
 action_trait = I{name}Actions
-state_struct = {name}State
 state_id_enum = {name}StateId
 init_state_id_variant = _{name}InitialState_
 ";
@@ -223,12 +205,9 @@ init_state_id_variant = _{name}InitialState_
         let template = NamingTemplate::default();
         let names = template.render("MyFsm").unwrap();
         assert_eq!(names.fsm, "MyFsm");
-        assert_eq!(names.fsm_inner, "MyFsmInner");
         assert_eq!(names.module, "my_fsm");
         assert_eq!(names.event_params_trait, "IMyFsmEventParams");
-        assert_eq!(names.event_enum, "MyFsmEvent");
         assert_eq!(names.action_trait, "IMyFsmActions");
-        assert_eq!(names.state_struct, "MyFsmStateNode");
         assert_eq!(names.state_id_enum, "MyFsmState");
         assert_eq!(names.init_state_id_variant, "_MyFsmInitialState_");
     }

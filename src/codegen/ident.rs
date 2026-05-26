@@ -20,12 +20,12 @@ impl From<RenderedNames> for Idents {
     fn from(names: RenderedNames) -> Self {
         Self {
             fsm: quote::format_ident!("{}", names.fsm),
-            fsm_inner: quote::format_ident!("{}", names.fsm_inner),
+            fsm_inner: quote::format_ident!("FsmInner"),
             module: quote::format_ident!("{}", names.module),
             event_params_trait: quote::format_ident!("{}", names.event_params_trait),
-            event_enum: quote::format_ident!("{}", names.event_enum),
+            event_enum: quote::format_ident!("Event"),
             action_trait: quote::format_ident!("{}", names.action_trait),
-            state_struct: quote::format_ident!("{}", names.state_struct),
+            state_struct: quote::format_ident!("StateNode"),
             state_id_enum: quote::format_ident!("{}", names.state_id_enum),
             init_state_id_variant: quote::format_ident!("{}", names.init_state_id_variant),
         }

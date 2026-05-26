@@ -223,7 +223,7 @@ The following is generated:
 | **FSM Struct** | `{DiagramName}` | Main state machine struct (UpperCamelCase) |
 | **Event Parameters Trait** | `I{DiagramName}EventParams` | Trait defining event parameter types |
 | **Actions Trait** | `I{DiagramName}Actions` | Trait defining action methods |
-| **State Struct** | `{DiagramName}State` | Internal state representation |
+| **State ID Enum** | `{DiagramName}State` | Enum returned by `current_state()` |
 | **Module** | `{diagram_name}` | Generated module name (snake_case) |
 
 ### Events and Actions
@@ -239,7 +239,9 @@ From the elements given by the custom syntax the following is derived:
 
 ### Custom Naming Templates
 
-The default naming patterns for the core generated types can be customized by providing a naming template file via the `naming` option. The template file uses `{name}` (UpperCamelCase) as placeholder. The `module` value is automatically converted to snake_case. See the [default template](src/codegen/default_naming.tmpl) for the format and [custom_naming](tests/custom_naming.rs) for a usage example.
+The default naming patterns for the publicly exposed generated types can be customized by providing a naming template file via the `naming` option.
+The template file uses `{name}` (UpperCamelCase) as placeholder. The `module` value is automatically converted to snake_case.
+See the [default template](src/codegen/default_naming.tmpl) for the format and [custom_naming](tests/custom_naming.rs) for a usage example.
 
 Note: Event, action, and state element names are not affected by the naming template — they always use the names as written in the PlantUML diagram.
 
