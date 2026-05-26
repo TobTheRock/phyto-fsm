@@ -219,17 +219,13 @@ impl UmlFsmBuilder {
         if state_type != StateType::Simple && current_type == StateType::Simple {
             debug!(
                 "Updating Type of state '{}' from {:?} to {:?}",
-                name,
-                current_type,
-                state_type
+                name, current_type, state_type
             );
             self.arena[id].get_mut().state_type = state_type;
         } else if state_type != StateType::Simple && current_type != state_type {
             debug!(
                 "State '{}' already has type {:?}, ignoring {:?}",
-                name,
-                current_type,
-                state_type
+                name, current_type, state_type
             );
         }
     }

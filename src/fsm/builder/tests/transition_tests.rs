@@ -42,7 +42,6 @@ fn add_transition_creates_states() {
 
 #[test]
 fn add_transition_finds_existing_substate_from_root_scope() {
-
     let mut builder = UmlFsmBuilder::new("TestFSM");
     builder.add_state("Start", StateType::Enter);
 
