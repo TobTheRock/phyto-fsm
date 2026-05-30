@@ -47,24 +47,6 @@ where
     }
 }
 
-#[derive(Copy)]
-struct PlantFsmStateImpl<T: IPlantFsmActions> {
-    id: PlantFsmState,
-    // Transition based on an event, depending on the state
-    // Returns Some(state) if consumed, None if not consumed
-    transition: fn(event: PlantFsmEvent<T>, actions: &mut T) -> Option<Self>,
-    // Direct transitions, not based on an event
-    direct_transition: fn(actions: &mut T) -> Option<Self>,
-    // state to enter when transitioned to, if there are no substates this is Self
-    enter_state: fn() -> Self,
-    // enter action, composite states check for internal transitions
-    enter: fn(actions: &mut T, from: &Self) -> (),
-    // exit action, composite states check for internal transitions
-    exit: fn(actions: &mut T, to: &Self) -> (),
-    // check if event would be deferred, only generated if the FSM contains deferred events
-    defer_event: fn(event: &PlantFsmEvent<T>) -> bool,
-}
-
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum PlantFsmState {
     Winter,
@@ -80,7 +62,6 @@ pub enum PlantFsmState {
     Autumn,
     AutumnCrisp,
     AutumnPleasant,
-    _PlantFsmInitialState_,
 }
 
 impl From<PlantFsmState> for &'static str {
@@ -99,7 +80,6 @@ impl From<PlantFsmState> for &'static str {
             PlantFsmState::Autumn => "Autumn",
             PlantFsmState::AutumnCrisp => "Autumn::Crisp",
             PlantFsmState::AutumnPleasant => "Autumn::Pleasant",
-            PlantFsmState::_PlantFsmInitialState_ => "[*]",
         }
     }
 }
@@ -111,7 +91,26 @@ impl std::fmt::Display for PlantFsmState {
     }
 }
 
-impl<T: IPlantFsmActions> Clone for PlantFsmStateImpl<T> {
+#[derive(Copy)]
+struct RealState<T: IPlantFsmActions> {
+    id: PlantFsmState,
+    // Transition based on an event, depending on the state
+    // Returns Some for external and self transitions
+    // Internal transitions will return None, same if the event is ignored
+    transition: fn(event: PlantFsmEvent<T>, actions: &mut T) -> Option<RealState<T>>,
+    // Direct transitions, not based on an event
+    direct_transition: fn(actions: &mut T) -> Option<RealState<T>>,
+    // state to enter when transitioned to, if there are no substates this is Self
+    enter_state: fn() -> RealState<T>,
+    // enter action, composite states check for internal transitions
+    enter: fn(actions: &mut T, from: &PlantFsmStateNode<T>),
+    // exit action, composite states check for internal transitions
+    exit: fn(actions: &mut T, to: &PlantFsmStateNode<T>),
+    // check if event would be deferred, only generated if the FSM contains deferred events
+    defer_event: fn(event: &PlantFsmEvent<T>) -> bool,
+}
+
+impl<T: IPlantFsmActions> Clone for RealState<T> {
     fn clone(&self) -> Self {
         Self {
             id: self.id,
@@ -124,30 +123,98 @@ impl<T: IPlantFsmActions> Clone for PlantFsmStateImpl<T> {
         }
     }
 }
-
-impl<T: IPlantFsmActions> PartialEq for PlantFsmStateImpl<T> {
+impl<T: IPlantFsmActions> PartialEq for RealState<T> {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id
     }
 }
 
-impl<T> PlantFsmStateImpl<T>
+// Internal state representation: real states plus pseudo-states (currently only the
+// implicit initial). Pseudo-states are kept here, off the public PlantFsmState enum,
+// because they are transient bookkeeping rather than user-observable rest states.
+#[derive(Copy, Clone)]
+enum PlantFsmStateNode<T: IPlantFsmActions> {
+    Real(RealState<T>),
+    Initial { target: fn() -> RealState<T> },
+}
+
+impl<T: IPlantFsmActions> std::fmt::Display for PlantFsmStateNode<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Real(real) => write!(f, "{}", real.id),
+            Self::Initial { .. } => write!(f, "[*]"),
+        }
+    }
+}
+
+impl<A> PlantFsmStateNode<A>
 where
-    T: IPlantFsmActions,
+    A: IPlantFsmActions,
 {
-    // Hidden init state to trigger enter actions when starting the FSM
+    // Hidden init pseudo-state to trigger enter actions when starting the FSM
     fn init() -> Self {
-        Self {
-            id: PlantFsmState::_PlantFsmInitialState_,
-            transition: |_event, _action| None,
-            direct_transition: |_action| Some(PlantFsmStateImpl::winter_freezing()),
-            enter_state: Self::init,
-            enter: |_actions, _from| {},
-            exit: |_actions, _to| {},
-            defer_event: |_event| false,
+        Self::Initial {
+            target: RealState::<A>::winter_freezing,
         }
     }
 
+    // Real states map to their PlantFsmState id; pseudo-states have none.
+    fn id(&self) -> Option<PlantFsmState> {
+        match self {
+            Self::Real(real) => Some(real.id),
+            Self::Initial { .. } => None,
+        }
+    }
+
+    // Resolve a transition target to its leaf entry state: composite states
+    // delegate to their declared `enter_state`, the initial pseudo-state to its target.
+    fn resolve_enter_state(&self) -> Self {
+        match self {
+            Self::Real(real) => Self::Real((real.enter_state)()),
+            Self::Initial { target } => Self::Real(target()),
+        }
+    }
+
+    fn defer_event(&self, event: &PlantFsmEvent<A>) -> bool {
+        match self {
+            Self::Real(real_state) => (real_state.defer_event)(event),
+            Self::Initial { .. } => false,
+        }
+    }
+
+    fn transition(&self, event: PlantFsmEvent<A>, actions: &mut A) -> Option<Self> {
+        match self {
+            Self::Real(real) => (real.transition)(event, actions).map(Self::Real),
+            Self::Initial { .. } => None,
+        }
+    }
+
+    fn direct_transition(&self, actions: &mut A) -> Option<Self> {
+        match self {
+            Self::Real(real) => (real.direct_transition)(actions).map(Self::Real),
+            Self::Initial { target } => Some(Self::Real(target())),
+        }
+    }
+
+    fn enter(&self, actions: &mut A, from: &PlantFsmStateNode<A>) {
+        match self {
+            Self::Real(real) => (real.enter)(actions, from),
+            Self::Initial { .. } => {}
+        }
+    }
+
+    fn exit(&self, actions: &mut A, to: &PlantFsmStateNode<A>) {
+        match self {
+            Self::Real(real) => (real.exit)(actions, to),
+            Self::Initial { .. } => {}
+        }
+    }
+}
+
+impl<T> RealState<T>
+where
+    T: IPlantFsmActions,
+{
     fn winter() -> Self {
         Self {
             id: PlantFsmState::Winter,
@@ -161,8 +228,8 @@ where
             enter_state: Self::winter_freezing,
             enter: |actions, from| {
                 if matches!(
-                    from.id,
-                    PlantFsmState::WinterFreezing | PlantFsmState::WinterMild
+                    from.id(),
+                    Some(PlantFsmState::WinterFreezing | PlantFsmState::WinterMild)
                 ) {
                     return;
                 }
@@ -329,7 +396,7 @@ where
                 PlantFsmEvent::TemperatureDrops(_) => Some(Self::summer_balmy()),
                 PlantFsmEvent::TemperatureRises(params) => {
                     actions.spontaneous_combustion(params);
-                    Some(Self::summer_scorching())
+                    None
                 }
                 _ => {
                     let parent = Self::summer();
@@ -401,7 +468,7 @@ where
 
 struct PlantFsmImpl<A: IPlantFsmActions> {
     actions: A,
-    current_state: PlantFsmStateImpl<A>,
+    current_state: PlantFsmStateNode<A>,
     // This member is only generated when the FSM contains deferred events
     deferred_events: std::collections::VecDeque<PlantFsmEvent<A>>,
 }
@@ -413,7 +480,7 @@ where
     fn start(actions: A) -> Self {
         let mut fsm = Self {
             actions,
-            current_state: PlantFsmStateImpl::init(),
+            current_state: PlantFsmStateNode::init(),
             deferred_events: std::collections::VecDeque::new(),
         };
 
@@ -439,11 +506,8 @@ where
     }
 
     fn try_defer_event(&mut self, event: PlantFsmEvent<A>) -> Option<PlantFsmEvent<A>> {
-        if (self.current_state.defer_event)(&event) {
-            debug!(
-                "PlantFsm: {} deferring event {}",
-                self.current_state.id, event
-            );
+        if self.current_state.defer_event(&event) {
+            debug!("PlantFsm: {} deferring event {}", self.current_state, event);
             self.deferred_events.push_back(event);
             None
         } else {
@@ -453,15 +517,13 @@ where
 
     fn try_event_based_transition(&mut self, event: PlantFsmEvent<A>) -> bool {
         let event_name = format!("{}", event);
-        if let Some(transition_state) = (self.current_state.transition)(event, &mut self.actions) {
-            if transition_state.id != self.current_state.id {
-                let enter_state = (transition_state.enter_state)();
-                debug!(
-                    "PlantFsm: {} -[{}]-> {}, entering {}",
-                    self.current_state.id, event_name, transition_state.id, enter_state.id
-                );
-                self.change_state(enter_state);
-            }
+        if let Some(transition_state) = self.current_state.transition(event, &mut self.actions) {
+            let enter_state = transition_state.resolve_enter_state();
+            debug!(
+                "PlantFsm: {} -[{}]-> {}, entering {}",
+                self.current_state, event_name, transition_state, enter_state
+            );
+            self.change_state(enter_state);
             true
         } else {
             false
@@ -469,20 +531,19 @@ where
     }
 
     fn try_direct_transition(&mut self) {
-        while let Some(transition_state) = (self.current_state.direct_transition)(&mut self.actions)
-        {
-            let enter_state = (transition_state.enter_state)();
+        while let Some(transition_state) = self.current_state.direct_transition(&mut self.actions) {
+            let enter_state = transition_state.resolve_enter_state();
             debug!(
                 "PlantFsm: {} -[direct]-> {}, entering {}",
-                self.current_state.id, enter_state.id, transition_state.id
+                self.current_state, transition_state, enter_state
             );
             self.change_state(enter_state);
         }
     }
 
-    fn change_state(&mut self, next_state: PlantFsmStateImpl<A>) {
-        (self.current_state.exit)(&mut self.actions, &next_state);
-        (next_state.enter)(&mut self.actions, &self.current_state);
+    fn change_state(&mut self, next_state: PlantFsmStateNode<A>) {
+        self.current_state.exit(&mut self.actions, &next_state);
+        next_state.enter(&mut self.actions, &self.current_state);
         self.current_state = next_state;
     }
 }
@@ -497,8 +558,8 @@ impl<A> PlantFsm<A>
 where
     A: IPlantFsmActions,
 {
-    pub fn current_state(&self) -> PlantFsmState {
-        self.0.current_state.id
+    pub fn active_state(&self) -> Option<PlantFsmState> {
+        self.0.current_state.id()
     }
 
     pub fn temperature_rises(
@@ -618,11 +679,17 @@ mod test {
         actions.expect_end_heat_wave().never();
 
         let mut fsm = super::start(actions);
-        assert_eq!(fsm.current_state(), super::PlantFsmState::WinterArcticBlast);
+        assert_eq!(
+            fsm.active_state(),
+            Some(super::PlantFsmState::WinterArcticBlast)
+        );
 
         // Defer TemperatureRises while in ArcticBlast
         fsm.temperature_rises(());
-        assert_eq!(fsm.current_state(), super::PlantFsmState::WinterArcticBlast);
+        assert_eq!(
+            fsm.active_state(),
+            Some(super::PlantFsmState::WinterArcticBlast)
+        );
         assert_eq!(
             fsm.0.deferred_events.len(),
             1,
@@ -633,8 +700,8 @@ mod test {
         // Then deferred TemperatureRises fires: Brisk→Temperate
         fsm.time_advances(42);
         assert_eq!(
-            fsm.current_state(),
-            super::PlantFsmState::SpringTemperate,
+            fsm.active_state(),
+            Some(super::PlantFsmState::SpringTemperate),
             "Deferred TemperatureRises should have fired in Spring::Brisk"
         );
         assert_eq!(

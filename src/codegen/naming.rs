@@ -12,7 +12,6 @@ const REQUIRED_KEYS: &[&str] = &[
     "event_params_trait",
     "action_trait",
     "state_id_enum",
-    "init_state_id_variant",
 ];
 
 #[derive(PartialEq, Eq, Debug, thiserror::Error)]
@@ -40,7 +39,6 @@ pub struct RenderedNames {
     pub event_params_trait: String,
     pub action_trait: String,
     pub state_id_enum: String,
-    pub init_state_id_variant: String,
 }
 
 #[derive(Debug, Clone)]
@@ -134,7 +132,6 @@ impl NamingTemplate<'_> {
             event_params_trait: render_value(&entries["event_params_trait"])?,
             action_trait: render_value(&entries["action_trait"])?,
             state_id_enum: render_value(&entries["state_id_enum"])?,
-            init_state_id_variant: render_value(&entries["init_state_id_variant"])?,
         })
     }
 }
@@ -162,8 +159,7 @@ fsm {name}
 module = {name}
 event_params_trait = I{name}EventParams
 action_trait = I{name}Actions
-state_id_enum = {name}StateId
-init_state_id_variant = _{name}InitialState_";
+state_id_enum = {name}StateId";
         let template = NamingTemplate { content: bad };
         let result = template.render("Foo");
         assert!(result.is_err());
@@ -177,7 +173,6 @@ module = {name}
 event_params_trait = I{name}EventParams
 action_trait = I{name}Actions
 state_id_enum = {name}StateId
-init_state_id_variant = _{name}InitialState_
 bogus_key = Something";
         let template = NamingTemplate { content: bad };
         let result = template.render("Foo");
@@ -193,7 +188,6 @@ module = {name}
   event_params_trait = I{name}EventParams
 action_trait = I{name}Actions
 state_id_enum = {name}StateId
-init_state_id_variant = _{name}InitialState_
 ";
         let template = NamingTemplate { content: spaced };
         let result = template.render("Foo");
@@ -209,7 +203,6 @@ init_state_id_variant = _{name}InitialState_
         assert_eq!(names.event_params_trait, "IMyFsmEventParams");
         assert_eq!(names.action_trait, "IMyFsmActions");
         assert_eq!(names.state_id_enum, "MyFsmState");
-        assert_eq!(names.init_state_id_variant, "_MyFsmInitialState_");
     }
 
     #[test]

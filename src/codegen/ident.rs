@@ -11,9 +11,9 @@ pub struct Idents {
     pub event_params_trait: proc_macro2::Ident,
     pub event_enum: proc_macro2::Ident,
     pub action_trait: proc_macro2::Ident,
-    pub state_struct: proc_macro2::Ident,
+    pub real_state_struct: proc_macro2::Ident,
+    pub state_node_enum: proc_macro2::Ident,
     pub state_id_enum: proc_macro2::Ident,
-    pub init_state_id_variant: proc_macro2::Ident,
 }
 
 impl From<RenderedNames> for Idents {
@@ -25,9 +25,9 @@ impl From<RenderedNames> for Idents {
             event_params_trait: quote::format_ident!("{}", names.event_params_trait),
             event_enum: quote::format_ident!("Event"),
             action_trait: quote::format_ident!("{}", names.action_trait),
-            state_struct: quote::format_ident!("StateNode"),
+            real_state_struct: quote::format_ident!("RealState"),
+            state_node_enum: quote::format_ident!("StateNode"),
             state_id_enum: quote::format_ident!("{}", names.state_id_enum),
-            init_state_id_variant: quote::format_ident!("{}", names.init_state_id_variant),
         }
     }
 }
