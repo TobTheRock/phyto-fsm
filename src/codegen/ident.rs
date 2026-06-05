@@ -65,7 +65,7 @@ impl fsm::State<'_> {
         proc_macro2::Literal::string(&self.qualified_name("::"))
     }
 
-    fn qualified_name(&self, separator: impl Into<String>) -> String {
+    pub fn qualified_name(&self, separator: impl Into<String>) -> String {
         use itertools::Itertools;
         let names: Vec<_> = std::iter::successors(Some(self.clone()), |next| next.parent())
             .map(|s| s.name().to_string())

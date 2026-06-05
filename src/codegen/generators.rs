@@ -45,14 +45,14 @@ pub fn generate_action_trait(ctx: &GenerationContext) -> proc_macro2::TokenStrea
         }
     });
 
-    let enter_methods = extract::enter_actions(ctx.fsm).map(|action| {
+    let enter_methods = extract::enter_actions(ctx.fsm).map(|(action, _states)| {
         let action_ident = action.ident();
         quote::quote! {
             fn #action_ident(&mut self);
         }
     });
 
-    let exit_methods = extract::exit_actions(ctx.fsm).map(|action| {
+    let exit_methods = extract::exit_actions(ctx.fsm).map(|(action, _states)| {
         let action_ident = action.ident();
         quote::quote! {
             fn #action_ident(&mut self);

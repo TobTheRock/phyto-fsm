@@ -38,16 +38,33 @@ pub fn direct_transition_guards(fsm: &UmlFsm) -> impl Iterator<Item = &Action> {
         .unique()
 }
 
-pub fn enter_actions(fsm: &UmlFsm) -> impl Iterator<Item = Action> + '_ {
-    fsm.states()
-        .filter_map(|s| s.enter_action().cloned())
-        .unique()
+pub fn enter_actions(fsm: &UmlFsm) -> impl Iterator<Item = (Action, Vec<String>)> + '_ {
+    group_state_actions(fsm, |s| s.enter_action().cloned())
 }
 
-pub fn exit_actions(fsm: &UmlFsm) -> impl Iterator<Item = Action> + '_ {
-    fsm.states()
-        .filter_map(|s| s.exit_action().cloned())
-        .unique()
+pub fn exit_actions(fsm: &UmlFsm) -> impl Iterator<Item = (Action, Vec<String>)> + '_ {
+    group_state_actions(fsm, |s| s.exit_action().cloned())
+}
+
+/// Collects the states owning each enter/exit action, grouped by action and keyed on the
+/// qualified state name. The order follows the FSM's state order, keeping codegen output
+/// deterministic. The name list lets the generated docs point at the owning state(s).
+fn group_state_actions(
+    fsm: &UmlFsm,
+    select: impl Fn(&crate::fsm::State) -> Option<Action>,
+) -> std::vec::IntoIter<(Action, Vec<String>)> {
+    let mut groups: Vec<(Action, Vec<String>)> = Vec::new();
+    for state in fsm.states() {
+        let Some(action) = select(&state) else {
+            continue;
+        };
+        let name = state.qualified_name("::");
+        match groups.iter_mut().find(|(grouped, _)| *grouped == action) {
+            Some((_, names)) => names.push(name),
+            None => groups.push((action, vec![name])),
+        }
+    }
+    groups.into_iter()
 }
 
 #[cfg(test)]
@@ -107,6 +124,41 @@ mod tests {
         let direct: Vec<_> = direct_transition_actions(&fsm).collect();
         assert_eq!(direct.len(), 1);
         assert_eq!(direct[0], &Action::from("DirectAction"));
+    }
+
+    #[test]
+    fn enter_actions_group_states_sharing_one_action() {
+        let mut builder = UmlFsmBuilder::new("TestFSM");
+        builder.add_state("A", StateType::Enter);
+        builder.add_enter_action("A", "OnEnter".into());
+        builder.add_state("B", StateType::Simple);
+        builder.add_enter_action("B", "OnEnter".into());
+        builder.add_state("C", StateType::Simple);
+        builder.add_enter_action("C", "OnlyC".into());
+        builder.add_transition(TransitionParameters {
+            source: "A",
+            target: Some("B"),
+            event: Some("Go".into()),
+            action: None,
+            guard: None,
+        });
+        builder.add_transition(TransitionParameters {
+            source: "B",
+            target: Some("C"),
+            event: Some("Go".into()),
+            action: None,
+            guard: None,
+        });
+        let fsm = builder.build().unwrap();
+
+        let entered: Vec<_> = enter_actions(&fsm).collect();
+        assert_eq!(
+            entered,
+            vec![
+                (Action::from("OnEnter"), vec!["A".to_string(), "B".to_string()]),
+                (Action::from("OnlyC"), vec!["C".to_string()]),
+            ]
+        );
     }
 
     #[test]
