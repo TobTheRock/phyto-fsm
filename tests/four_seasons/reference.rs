@@ -1,26 +1,50 @@
 use log::debug;
 
+/// Associates each FSM event with a user-supplied parameter type
 pub trait IPlantFsmEventParams {
+    /// Parameter type carried by the `TemperatureRises` event
     type TemperatureRisesParams;
+    /// Parameter type carried by the `TemperatureDrops` event
     type TemperatureDropsParams;
+    /// Parameter type carried by the `TimeAdvances` event
     type TimeAdvancesParams;
 }
 
+/// Implement this trait to provide the behavior for `PlantFsm`.
+///
+/// The state machine calls into your implementation at every meaningful transition boundary.
+/// There are four kinds of methods, distinguished by their signature:
+///
+/// - **Transition actions** (`fn foo(&mut self, event: Self::XxxParams)`) — called during an
+///   event-triggered transition; the event payload is forwarded to you.
+/// - **Direct transition actions** (`fn foo(&mut self)`) — called during a guard-driven
+///   autonomous transition (no event payload).
+/// - **Enter / exit actions** (`fn foo(&mut self)`) — called when the machine enters or leaves
+///   a particular state.
+/// - **Guards** (`fn foo(&self, ...) -> bool`) — return `true` to allow a transition, `false`
+///   to block it.
+///
+/// Pass your implementation to [`start`] to start the machine.
 pub trait IPlantFsmActions: IPlantFsmEventParams {
-    // transition actions
+    /// Action triggered by the `TimeAdvances` event
     fn start_blooming(&mut self, event: Self::TimeAdvancesParams);
+    /// Action triggered by the `TimeAdvances` event
     fn ripen_fruit(&mut self, event: Self::TimeAdvancesParams);
+    /// Action triggered by the `TimeAdvances` event
     fn drop_petals(&mut self, event: Self::TimeAdvancesParams);
+    /// Action triggered by the `TemperatureRises` event
     fn spontaneous_combustion(&mut self, event: Self::TemperatureRisesParams);
-    // direct transition actions
+    /// Action on a direct transition
     fn start_blizzard(&mut self);
-    // enter actions
+    /// Action run when entering `Summer::Scorching`
     fn start_heat_wave(&mut self);
+    /// Action run when entering `Winter`
     fn winter_is_coming(&mut self);
-    // exit actions
+    /// Action run when exiting `Summer::Scorching`
     fn end_heat_wave(&mut self);
-    // guards
+    /// Guard for transitions triggered by the `TimeAdvances` event
     fn enough_time_passed(&self, event: &Self::TimeAdvancesParams) -> bool;
+    /// Guard for direct transitions
     fn has_very_cold_weather(&self) -> bool;
 }
 
@@ -558,10 +582,13 @@ impl<A> PlantFsm<A>
 where
     A: IPlantFsmActions,
 {
+    /// Returns the currently active state. If the FSM was not started or has ended None is
+    /// returned.
     pub fn active_state(&self) -> Option<PlantFsmState> {
         self.0.current_state.id()
     }
 
+    /// Triggers a `TemperatureRises` event
     pub fn temperature_rises(
         &mut self,
         params: <A as IPlantFsmEventParams>::TemperatureRisesParams,
@@ -570,6 +597,7 @@ where
             .run_event_loop(PlantFsmEvent::TemperatureRises(params));
     }
 
+    /// Triggers a `TemperatureDrops` event
     pub fn temperature_drops(
         &mut self,
         params: <A as IPlantFsmEventParams>::TemperatureDropsParams,
@@ -578,6 +606,7 @@ where
             .run_event_loop(PlantFsmEvent::TemperatureDrops(params));
     }
 
+    /// Triggers a `TimeAdvances` event
     pub fn time_advances(&mut self, params: <A as IPlantFsmEventParams>::TimeAdvancesParams) {
         self.0.run_event_loop(PlantFsmEvent::TimeAdvances(params));
     }

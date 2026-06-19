@@ -38,30 +38,38 @@ pub fn direct_transition_guards(fsm: &UmlFsm) -> impl Iterator<Item = &Action> {
         .unique()
 }
 
-pub fn enter_actions(fsm: &UmlFsm) -> impl Iterator<Item = (Action, Vec<String>)> + '_ {
+#[derive(Debug, PartialEq, Eq)]
+pub struct StateAction {
+    pub action: Action,
+    pub states: Vec<String>,
+}
+
+pub fn enter_actions(fsm: &UmlFsm) -> impl Iterator<Item = StateAction> + '_ {
     group_state_actions(fsm, |s| s.enter_action().cloned())
 }
 
-pub fn exit_actions(fsm: &UmlFsm) -> impl Iterator<Item = (Action, Vec<String>)> + '_ {
+pub fn exit_actions(fsm: &UmlFsm) -> impl Iterator<Item = StateAction> + '_ {
     group_state_actions(fsm, |s| s.exit_action().cloned())
 }
 
-/// Collects the states owning each enter/exit action, grouped by action and keyed on the
-/// qualified state name. The order follows the FSM's state order, keeping codegen output
-/// deterministic. The name list lets the generated docs point at the owning state(s).
+/// Groups enter/exit actions by action, collecting each owning state's qualified name. The
+/// order follows the FSM's state order, keeping codegen output deterministic.
 fn group_state_actions(
     fsm: &UmlFsm,
     select: impl Fn(&crate::fsm::State) -> Option<Action>,
-) -> std::vec::IntoIter<(Action, Vec<String>)> {
-    let mut groups: Vec<(Action, Vec<String>)> = Vec::new();
+) -> std::vec::IntoIter<StateAction> {
+    let mut groups: Vec<StateAction> = Vec::new();
     for state in fsm.states() {
         let Some(action) = select(&state) else {
             continue;
         };
         let name = state.qualified_name("::");
-        match groups.iter_mut().find(|(grouped, _)| *grouped == action) {
-            Some((_, names)) => names.push(name),
-            None => groups.push((action, vec![name])),
+        match groups.iter_mut().find(|grouped| grouped.action == action) {
+            Some(grouped) => grouped.states.push(name),
+            None => groups.push(StateAction {
+                action,
+                states: vec![name],
+            }),
         }
     }
     groups.into_iter()
@@ -155,8 +163,14 @@ mod tests {
         assert_eq!(
             entered,
             vec![
-                (Action::from("OnEnter"), vec!["A".to_string(), "B".to_string()]),
-                (Action::from("OnlyC"), vec!["C".to_string()]),
+                StateAction {
+                    action: Action::from("OnEnter"),
+                    states: vec!["A".to_string(), "B".to_string()],
+                },
+                StateAction {
+                    action: Action::from("OnlyC"),
+                    states: vec!["C".to_string()],
+                },
             ]
         );
     }
