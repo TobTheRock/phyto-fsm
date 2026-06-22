@@ -144,6 +144,21 @@ fn build_transitions_fsm() -> Result<UmlFsm> {
         action: None,
         guard: None,
     });
+    // Event list: one label, multiple events -> one transition per event
+    builder.add_transition(TransitionParameters {
+        source: "StateB",
+        target: Some("StateA"),
+        event: Some(Event("GoToA".into())),
+        action: None,
+        guard: None,
+    });
+    builder.add_transition(TransitionParameters {
+        source: "StateB",
+        target: Some("StateA"),
+        event: Some(Event("GoToADifferently".into())),
+        action: None,
+        guard: None,
+    });
     builder.build()
 }
 

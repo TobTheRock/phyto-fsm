@@ -16,9 +16,12 @@ defer_event = { event_name ~ ws* ~ "/" ~ ws* ~ "defer" }
 // Transition description: standalone entry point wrapping transition_label with SOI/EOI
 transition_description = { SOI ~ ws* ~ transition_label ~ ws* ~ EOI }
 
-// Transition label: EventName [GuardName] / ActionName
-// event_name is optional for direct transitions (e.g., "/ ActionName" or "[Guard] / ActionName")
-transition_label = { event_name? ~ (ws* ~ "[" ~ ws* ~ guard_name ~ ws* ~ "]")? ~ (ws* ~ "/" ~ ws* ~ action_name)? }
+// Transition label: EventName[, EventName...] [GuardName] / ActionName
+// the event list is optional for direct transitions (e.g., "/ ActionName" or "[Guard] / ActionName")
+transition_label = { event_list? ~ (ws* ~ "[" ~ ws* ~ guard_name ~ ws* ~ "]")? ~ (ws* ~ "/" ~ ws* ~ action_name)? }
+
+// Event list: one or more events sharing the same target; desugars to one transition per event
+event_list = { event_name ~ (ws* ~ "," ~ ws* ~ event_name)* }
 
 // Identifiers
 event_name = @{ ASCII_ALPHANUMERIC+ }

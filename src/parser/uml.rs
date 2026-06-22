@@ -15,7 +15,9 @@ struct UmlParser;
 #[derive(Clone, Debug, PartialEq)]
 pub struct TransitionLabel {
     pub action: Option<Action>,
-    pub event: Option<Event>,
+    /// Events that trigger this transition. A label may list several (`A, B`), each
+    /// desugaring to its own transition. Empty for direct (event-less) transitions.
+    pub events: Vec<Event>,
     pub guard: Option<Action>,
 }
 
@@ -56,7 +58,7 @@ fn parse_transition_description(input: &str) -> Result<TransitionLabel> {
 
     let label = extract_transition_label(label_pair);
 
-    if label.event.is_none() && label.action.is_none() && label.guard.is_none() {
+    if label.events.is_empty() && label.action.is_none() && label.guard.is_none() {
         return Err(ParseError::EmptyTransition.into());
     }
 
@@ -91,7 +93,7 @@ fn parse_state_description(input: &str) -> Result<StateDescription> {
             Rule::defer_event => parse_defer_event(pair),
             Rule::transition_label => {
                 let label = extract_transition_label(pair);
-                if label.event.is_none() && label.action.is_none() && label.guard.is_none() {
+                if label.events.is_empty() && label.action.is_none() && label.guard.is_none() {
                     return Err(ParseError::UnrecognisedStateDescription(input.to_string()).into());
                 }
                 Ok(StateDescription::InternalTransition(label))
@@ -124,13 +126,19 @@ fn parse_state_action(pair: pest::iterators::Pair<Rule>) -> Result<StateDescript
 }
 
 fn extract_transition_label(pair: pest::iterators::Pair<Rule>) -> TransitionLabel {
-    let mut event = None;
+    let mut events = Vec::new();
     let mut action = None;
     let mut guard = None;
 
     for p in pair.into_inner() {
         match p.as_rule() {
-            Rule::event_name => event = Some(Event(p.as_str().to_owned())),
+            Rule::event_list => {
+                events.extend(
+                    p.into_inner()
+                        .filter(|e| e.as_rule() == Rule::event_name)
+                        .map(|e| Event(e.as_str().to_owned())),
+                );
+            }
             Rule::guard_name => guard = Some(p.as_str().to_owned().into()),
             Rule::action_name => action = Some(p.as_str().to_owned().into()),
             _ => {}
@@ -138,7 +146,7 @@ fn extract_transition_label(pair: pest::iterators::Pair<Rule>) -> TransitionLabe
     }
 
     TransitionLabel {
-        event,
+        events,
         action,
         guard,
     }
@@ -161,14 +169,29 @@ mod test {
     #[test]
     fn parse_event_only() {
         let desc = TransitionLabel::try_from("   someEvent   ").unwrap();
-        assert_eq!(desc.event, Some("someEvent".to_owned().into()));
+        assert_eq!(desc.events, vec!["someEvent".to_owned().into()]);
         assert_eq!(desc.action, None);
+    }
+
+    #[test]
+    fn parse_event_list() {
+        let desc = TransitionLabel::try_from(" EventA , EventB ,EventC ").unwrap();
+        assert_eq!(
+            desc.events,
+            vec![
+                "EventA".to_owned().into(),
+                "EventB".to_owned().into(),
+                "EventC".to_owned().into(),
+            ]
+        );
+        assert_eq!(desc.action, None);
+        assert_eq!(desc.guard, None);
     }
 
     #[test]
     fn parse_event_and_action() {
         let desc = TransitionLabel::try_from("   someEvent    / someAction").unwrap();
-        assert_eq!(desc.event, Some("someEvent".to_owned().into()));
+        assert_eq!(desc.events, vec!["someEvent".to_owned().into()]);
         assert_eq!(desc.action, Some("someAction".to_owned().into()));
     }
 
@@ -181,7 +204,7 @@ mod test {
     #[test]
     fn parse_direct_transition_action_only() {
         let desc = TransitionLabel::try_from("/ toStateB").unwrap();
-        assert_eq!(desc.event, None);
+        assert!(desc.events.is_empty());
         assert_eq!(desc.action, Some("toStateB".to_owned().into()));
         assert_eq!(desc.guard, None);
     }
@@ -189,7 +212,7 @@ mod test {
     #[test]
     fn parse_direct_transition_guard_and_action() {
         let desc = TransitionLabel::try_from("[CanGoToC] / toStateC").unwrap();
-        assert_eq!(desc.event, None);
+        assert!(desc.events.is_empty());
         assert_eq!(desc.guard, Some("CanGoToC".to_owned().into()));
         assert_eq!(desc.action, Some("toStateC".to_owned().into()));
     }
@@ -197,7 +220,7 @@ mod test {
     #[test]
     fn parse_direct_transition_guard_only() {
         let desc = TransitionLabel::try_from("[CanGoToD]").unwrap();
-        assert_eq!(desc.event, None);
+        assert!(desc.events.is_empty());
         assert_eq!(desc.guard, Some("CanGoToD".to_owned().into()));
         assert_eq!(desc.action, None);
     }
@@ -256,7 +279,7 @@ mod test {
         assert_eq!(
             desc,
             StateDescription::InternalTransition(TransitionLabel {
-                event: Some("SomeEvent".to_owned().into()),
+                events: vec!["SomeEvent".to_owned().into()],
                 guard: Some("AGuard".to_owned().into()),
                 action: Some("DoSomething".to_owned().into()),
             })
@@ -266,7 +289,7 @@ mod test {
     #[test]
     fn parse_event_with_guard() {
         let desc = TransitionLabel::try_from("ChangeState [AGuard]").unwrap();
-        assert_eq!(desc.event, Some("ChangeState".to_owned().into()));
+        assert_eq!(desc.events, vec!["ChangeState".to_owned().into()]);
         assert_eq!(desc.guard, Some("AGuard".to_owned().into()));
         assert_eq!(desc.action, None);
     }
@@ -274,7 +297,7 @@ mod test {
     #[test]
     fn parse_event_with_guard_and_action() {
         let desc = TransitionLabel::try_from("ChangeState [AGuard] / DoSomething").unwrap();
-        assert_eq!(desc.event, Some("ChangeState".to_owned().into()));
+        assert_eq!(desc.events, vec!["ChangeState".to_owned().into()]);
         assert_eq!(desc.guard, Some("AGuard".to_owned().into()));
         assert_eq!(desc.action, Some("DoSomething".to_owned().into()));
     }
@@ -283,7 +306,7 @@ mod test {
     fn parse_event_with_guard_whitespace() {
         let desc =
             TransitionLabel::try_from("  ChangeState  [  AGuard  ]  /  DoSomething  ").unwrap();
-        assert_eq!(desc.event, Some("ChangeState".to_owned().into()));
+        assert_eq!(desc.events, vec!["ChangeState".to_owned().into()]);
         assert_eq!(desc.guard, Some("AGuard".to_owned().into()));
         assert_eq!(desc.action, Some("DoSomething".to_owned().into()));
     }

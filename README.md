@@ -31,6 +31,7 @@ This way the design of the FSM is easy to grasp first hand and documentation and
 | Substate-to-substate transitions | Transitions between substates across different parent states | [substate_to_substate.rs](https://github.com/TobTheRock/phytofsm/blob/main/tests/substate_to_substate.rs) |
 | Self-transitions | States that transition to themselves | [transitions.rs](https://github.com/TobTheRock/phytofsm/blob/main/tests/transitions.rs) |
 | Alternative transitions | Multiple transitions from the same state with different events | [transitions.rs](https://github.com/TobTheRock/phytofsm/blob/main/tests/transitions.rs) |
+| Event lists | One transition triggered by any of several comma-separated events | [transitions.rs](https://github.com/TobTheRock/phytofsm/blob/main/tests/transitions.rs) |
 | Guard conditions | Conditional transitions using `[GuardName]` syntax | [guards.rs](https://github.com/TobTheRock/phytofsm/blob/main/tests/guards.rs) |
 | Internal transitions | Stay in state without triggering exit/enter actions | [internal_transitions.rs](https://github.com/TobTheRock/phytofsm/blob/main/tests/internal_transitions.rs) |
 | Direct transitions | Automatic transitions without events, with optional guards and actions | [direct_transitions.rs](https://github.com/TobTheRock/phytofsm/blob/main/tests/direct_transitions.rs) |
@@ -46,14 +47,33 @@ This way the design of the FSM is easy to grasp first hand and documentation and
   - ...
 - sub state machines
 - orthogonal regions
-- event lists
 
 ## UML Syntax for FSM Actions & Events
 
 In order to generate a state machine this library requires transitions and actions to be described
 according to the [UML specification](https://www.omg.org/spec/UML/2.5.1/PDF).
 
-### Transitions with Actions
+### Transitions
+
+A transition moves the FSM from one state to another when an event fires:
+
+```puml
+StateA --> StateB : EventName
+```
+
+- **EventName**: The event that triggers the transition
+
+#### Event Lists
+
+A single transition can be triggered by any of several events by listing them comma-separated:
+
+```puml
+StateA --> StateB : EventA, EventB, EventC
+```
+
+This desugars to one transition per event — equivalent to writing three separate `StateA --> StateB` lines. Because each event carries its own parameter type (and actions/guards are unique per event), an event list cannot share an action or guard across its events; use it for plain "any of these events transitions here" cases.
+
+#### Transitions with Actions
 
 Transitions can optionally include an action that is executed when the transition occurs:
 
@@ -61,8 +81,7 @@ Transitions can optionally include an action that is executed when the transitio
 StateA --> StateB : EventName / ActionName
 ```
 
-- **EventName**: The event that triggers the transition
-- **ActionName** (optional): The action method called during the transition seperated by `/`
+- **ActionName** (optional): The action method called during the transition, separated by `/`
 
 **Be aware that actions MUST be unique per event**, else a compile time error is raised.
 

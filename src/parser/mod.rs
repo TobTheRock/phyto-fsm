@@ -1,5 +1,5 @@
 use crate::error::{Error, Result};
-use crate::fsm::{StateId, StateType, TransitionParameters, UmlFsm, UmlFsmBuilder};
+use crate::fsm::{Event, StateId, StateType, TransitionParameters, UmlFsm, UmlFsmBuilder};
 
 mod error;
 mod plantuml;
@@ -49,19 +49,25 @@ fn add_fsm_elements(
     }
     // Add transitions last, as they can create new states
     for transition in &elements.transitions {
-        let (event, action, guard) = if let Some(desc) = transition.description {
-            let label = uml::TransitionLabel::try_from(desc)?;
-            (label.event, label.action, label.guard)
-        } else {
-            (None, None, None)
+        let label = transition
+            .description
+            .map(uml::TransitionLabel::try_from)
+            .transpose()?;
+        let (events, action, guard) = match label {
+            Some(label) => (label.events, label.action, label.guard),
+            None => (Vec::new(), None, None),
         };
-        builder.add_transition(TransitionParameters {
-            source: transition.source,
-            target: Some(transition.target),
-            event,
-            action,
-            guard,
-        });
+        // An event list desugars to one transition per event; a direct transition
+        // (no events) still yields a single event-less transition.
+        for event in events_or_none(events) {
+            builder.add_transition(TransitionParameters {
+                source: transition.source,
+                target: Some(transition.target),
+                event,
+                action: action.clone(),
+                guard: guard.clone(),
+            });
+        }
     }
 
     for desc in &elements.state_descriptions {
@@ -76,13 +82,15 @@ fn add_fsm_elements(
                 builder.add_deferred_event(desc.name, event);
             }
             Ok(uml::StateDescription::InternalTransition(label)) => {
-                builder.add_transition(TransitionParameters {
-                    source: desc.name,
-                    target: None,
-                    event: label.event,
-                    action: label.action,
-                    guard: label.guard,
-                });
+                for event in events_or_none(label.events) {
+                    builder.add_transition(TransitionParameters {
+                        source: desc.name,
+                        target: None,
+                        event,
+                        action: label.action.clone(),
+                        guard: label.guard.clone(),
+                    });
+                }
             }
             Err(_) => {} // unrecognised description, skip
         }
@@ -92,22 +100,13 @@ fn add_fsm_elements(
     Ok(())
 }
 
-impl<'a> TryFrom<plantuml::TransitionDescription<'a>> for TransitionParameters<'a> {
-    type Error = crate::error::Error;
-    fn try_from(transition: plantuml::TransitionDescription<'a>) -> Result<Self> {
-        let (event, action, guard) = if let Some(desc) = transition.description {
-            let label = uml::TransitionLabel::try_from(desc)?;
-            (label.event, label.action, label.guard)
-        } else {
-            (None, None, None)
-        };
-        Ok(Self {
-            source: transition.source,
-            target: Some(transition.target),
-            event,
-            action,
-            guard,
-        })
+/// Yields each event as `Some`, or a single `None` when the list is empty (a direct,
+/// event-less transition). Lets event-list desugaring and direct transitions share one loop.
+fn events_or_none(events: Vec<Event>) -> std::vec::IntoIter<Option<Event>> {
+    if events.is_empty() {
+        vec![None].into_iter()
+    } else {
+        events.into_iter().map(Some).collect::<Vec<_>>().into_iter()
     }
 }
 

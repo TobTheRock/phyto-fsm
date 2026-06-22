@@ -21,6 +21,8 @@ impl ITestFsmEventParams for MockTestFsmActions {
     type GoToBParams = ();
     type GoToBDifferentlyParams = ();
     type GoToCParams = ();
+    type GoToAParams = ();
+    type GoToADifferentlyParams = ();
 }
 
 #[test]
@@ -53,4 +55,19 @@ fn alternative_transition() {
     let mut fsm = test_fsm::start(actions);
 
     fsm.go_to_b_differently(());
+}
+
+#[test]
+fn event_list_every_event_transitions() {
+    let mut actions = MockTestFsmActions::new();
+    actions.expect_action2().returning(|_| ()).times(2);
+    let mut fsm = test_fsm::start(actions);
+
+    fsm.go_to_b(());
+    fsm.go_to_a(());
+    assert_eq!(fsm.active_state(), Some(test_fsm::TestFsmState::StateA));
+
+    fsm.go_to_b(());
+    fsm.go_to_a_differently(());
+    assert_eq!(fsm.active_state(), Some(test_fsm::TestFsmState::StateA));
 }
