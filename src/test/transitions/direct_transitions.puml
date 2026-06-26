@@ -1,12 +1,12 @@
 @startuml DirectTransitions
 [*] --> StateA
 
-StateA --> StateB : / toStateB
+StateA --> StateB : / ActionToB
 
-StateB -> StateC : [CanGoToC] / toStateC
-StateB -> StateD : [CanGoToD] 
-StateB -> StateA: GotoA
+StateB -> StateC : [CanGoToC] / ActionToC
+StateB -> StateD : [CanGoToD]
+StateB -> StateA: GoToA
 
-state StateD: entry / enterD
+state StateD: entry / EnterStateD
 
 @enduml

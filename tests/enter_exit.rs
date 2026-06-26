@@ -10,12 +10,12 @@ use mockall::{Sequence, mock};
 mock! {
     Actions {}
     impl IEnterExitActionsActions for Actions {
-        fn enter_a(&mut self);
-        fn exit_a(&mut self);
-        fn enter_c(&mut self);
-        fn exit_c(&mut self);
-        fn enter_c1(&mut self);
-        fn exit_c1(&mut self);
+        fn enter_state_a(&mut self);
+        fn exit_state_a(&mut self);
+        fn enter_state_c(&mut self);
+        fn exit_state_c(&mut self);
+        fn enter_state_ca(&mut self);
+        fn exit_state_ca(&mut self);
     }
 }
 
@@ -24,10 +24,10 @@ impl IEnterExitActionsEventParams for MockActions {
     type GoToBParams = ();
     type GoToAFromBParams = ();
     type GoToCParams = ();
-    type GoToC1FromAParams = ();
-    type GoToC2FromAParams = ();
+    type GoToCaFromAParams = ();
+    type GoToCbFromAParams = ();
     type GoToAFromCParams = ();
-    type GoToC2Params = ();
+    type GoToCbParams = ();
 }
 
 struct EnterExitTests {
@@ -42,96 +42,96 @@ impl EnterExitTests {
             seq: Sequence::new(),
         };
         // ignore: [*] -> A
-        t.expect_enter_a();
+        t.expect_enter_state_a();
         t
     }
-    fn expect_enter_a(&mut self) {
+    fn expect_enter_state_a(&mut self) {
         self.actions
-            .expect_enter_a()
+            .expect_enter_state_a()
             .returning(|| ())
             .times(1)
             .in_sequence(&mut self.seq);
     }
 
-    fn expect_exit_a(&mut self) {
+    fn expect_exit_state_a(&mut self) {
         self.actions
-            .expect_exit_a()
+            .expect_exit_state_a()
             .returning(|| ())
             .times(1)
             .in_sequence(&mut self.seq);
     }
 
-    fn expect_enter_c(&mut self) {
+    fn expect_enter_state_c(&mut self) {
         self.actions
-            .expect_enter_c()
+            .expect_enter_state_c()
             .returning(|| ())
             .times(1)
             .in_sequence(&mut self.seq);
     }
 
-    fn expect_exit_c(&mut self) {
+    fn expect_exit_state_c(&mut self) {
         self.actions
-            .expect_exit_c()
+            .expect_exit_state_c()
             .returning(|| ())
             .times(1)
             .in_sequence(&mut self.seq);
     }
 
-    fn expect_enter_c1(&mut self) {
+    fn expect_enter_state_ca(&mut self) {
         self.actions
-            .expect_enter_c1()
+            .expect_enter_state_ca()
             .returning(|| ())
             .times(1)
             .in_sequence(&mut self.seq);
     }
 
-    fn expect_exit_c1(&mut self) {
+    fn expect_exit_state_ca(&mut self) {
         self.actions
-            .expect_exit_c1()
+            .expect_exit_state_ca()
             .returning(|| ())
             .times(1)
             .in_sequence(&mut self.seq);
     }
 
     fn expect_a_to_c1(&mut self) {
-        self.expect_exit_a();
-        self.expect_enter_c();
-        self.expect_enter_c1();
+        self.expect_exit_state_a();
+        self.expect_enter_state_c();
+        self.expect_enter_state_ca();
     }
 
     fn expect_a_to_c2(&mut self) {
-        self.expect_exit_a();
+        self.expect_exit_state_a();
         // C2 doesn't have its own enter, so it should call C's enter
-        self.expect_enter_c();
+        self.expect_enter_state_c();
     }
 }
 
 #[test]
-fn enter_action_called_on_initial_state() {
+fn enter_state_action_called_on_initial_state() {
     let mut actions = MockActions::new();
-    actions.expect_enter_a().returning(|| ()).times(1);
+    actions.expect_enter_state_a().returning(|| ()).times(1);
 
     let _fsm = enter_exit_actions::start(actions);
 }
 
 #[test]
-fn exit_action_called_when_leaving_state() {
+fn exit_state_action_called_when_leaving_state() {
     let mut t = EnterExitTests::new();
 
-    t.expect_exit_a();
+    t.expect_exit_state_a();
 
     let mut fsm = enter_exit_actions::start(t.actions);
     fsm.go_to_b(());
 }
 
 #[test]
-fn enter_action_called_when_entering_state() {
+fn enter_state_action_called_when_entering_state() {
     let mut t = EnterExitTests::new();
 
     // A -> B
-    t.expect_exit_a();
+    t.expect_exit_state_a();
     // B -> A
-    t.expect_enter_a();
+    t.expect_enter_state_a();
 
     let mut fsm = enter_exit_actions::start(t.actions);
     fsm.go_to_b(());
@@ -145,7 +145,7 @@ fn parent_enter_before_substate_enter() {
     t.expect_a_to_c1();
 
     let mut fsm = enter_exit_actions::start(t.actions);
-    fsm.go_to_c1_from_a(());
+    fsm.go_to_ca_from_a(());
 }
 
 #[test]
@@ -155,12 +155,12 @@ fn substate_exit_before_parent_exit() {
     t.expect_a_to_c1();
 
     // C1 -> A
-    t.expect_exit_c1();
-    t.expect_exit_c();
-    t.expect_enter_a();
+    t.expect_exit_state_ca();
+    t.expect_exit_state_c();
+    t.expect_enter_state_a();
 
     let mut fsm = enter_exit_actions::start(t.actions);
-    fsm.go_to_c1_from_a(());
+    fsm.go_to_ca_from_a(());
     fsm.go_to_a_from_c(());
 }
 
@@ -171,7 +171,7 @@ fn substate_entry_defaults_to_parent_enter() {
     t.expect_a_to_c2();
 
     let mut fsm = enter_exit_actions::start(t.actions);
-    fsm.go_to_c2_from_a(());
+    fsm.go_to_cb_from_a(());
 }
 
 #[test]
@@ -180,11 +180,11 @@ fn substate_exit_defaults_to_parent_exit() {
 
     t.expect_a_to_c2();
     // C2 -> A
-    t.expect_exit_c();
-    t.expect_enter_a();
+    t.expect_exit_state_c();
+    t.expect_enter_state_a();
 
     let mut fsm = enter_exit_actions::start(t.actions);
-    fsm.go_to_c2_from_a(());
+    fsm.go_to_cb_from_a(());
     fsm.go_to_a_from_c(());
 }
 
@@ -194,21 +194,21 @@ fn internal_substate_transition_only_calls_substate_actions() {
 
     t.expect_a_to_c1();
     // C1 -> C2
-    t.expect_exit_c1();
-    t.actions.expect_enter_c().never();
-    t.actions.expect_exit_c().never();
+    t.expect_exit_state_ca();
+    t.actions.expect_enter_state_c().never();
+    t.actions.expect_exit_state_c().never();
 
     let mut fsm = enter_exit_actions::start(t.actions);
-    fsm.go_to_c1_from_a(());
-    fsm.go_to_c2(());
+    fsm.go_to_ca_from_a(());
+    fsm.go_to_cb(());
 }
 
 #[test]
-fn self_transition_calls_exit_and_enter() {
+fn self_transition_calls_exit_state_and_enter() {
     let mut t = EnterExitTests::new();
 
-    t.expect_exit_a();
-    t.expect_enter_a();
+    t.expect_exit_state_a();
+    t.expect_enter_state_a();
 
     let mut fsm = enter_exit_actions::start(t.actions);
     fsm.go_to_a_from_a(());

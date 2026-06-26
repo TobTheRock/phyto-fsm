@@ -10,9 +10,9 @@ use test_fsm::{ITestFsmActions, ITestFsmEventParams};
 mock! {
     TestFsmActions {}
     impl ITestFsmActions for TestFsmActions {
-        fn action1(&mut self, event: <MockTestFsmActions as ITestFsmEventParams>::SelfTransitionParams);
-        fn action2(&mut self, event: <MockTestFsmActions as ITestFsmEventParams>::SelfTransitionParams);
-        fn action3(&mut self, event: <MockTestFsmActions as ITestFsmEventParams>::SelfTransitionParams);
+        fn handle_self_transition(&mut self, event: <MockTestFsmActions as ITestFsmEventParams>::SelfTransitionParams);
+        fn handle_go_to_b(&mut self, event: <MockTestFsmActions as ITestFsmEventParams>::SelfTransitionParams);
+        fn handle_go_to_b_differently(&mut self, event: <MockTestFsmActions as ITestFsmEventParams>::SelfTransitionParams);
     }
 }
 
@@ -28,8 +28,8 @@ impl ITestFsmEventParams for MockTestFsmActions {
 #[test]
 fn self_transition_action_called() {
     let mut actions = MockTestFsmActions::new();
-    actions.expect_action1().returning(|_| ()).times(1);
-    actions.expect_action2().returning(|_| ()).times(1);
+    actions.expect_handle_self_transition().returning(|_| ()).times(1);
+    actions.expect_handle_go_to_b().returning(|_| ()).times(1);
     let mut fsm = test_fsm::start(actions);
 
     fsm.self_transition(());
@@ -39,8 +39,8 @@ fn self_transition_action_called() {
 #[test]
 fn final_state() {
     let mut actions = MockTestFsmActions::new();
-    actions.expect_action1().times(0);
-    actions.expect_action2().returning(|_| ()).times(1);
+    actions.expect_handle_self_transition().times(0);
+    actions.expect_handle_go_to_b().returning(|_| ()).times(1);
     let mut fsm = test_fsm::start(actions);
 
     fsm.go_to_b(());
@@ -50,8 +50,8 @@ fn final_state() {
 #[test]
 fn alternative_transition() {
     let mut actions = MockTestFsmActions::new();
-    actions.expect_action3().returning(|_| ()).times(1);
-    actions.expect_action2().times(0);
+    actions.expect_handle_go_to_b_differently().returning(|_| ()).times(1);
+    actions.expect_handle_go_to_b().times(0);
     let mut fsm = test_fsm::start(actions);
 
     fsm.go_to_b_differently(());
@@ -60,7 +60,7 @@ fn alternative_transition() {
 #[test]
 fn event_list_every_event_transitions() {
     let mut actions = MockTestFsmActions::new();
-    actions.expect_action2().returning(|_| ()).times(2);
+    actions.expect_handle_go_to_b().returning(|_| ()).times(2);
     let mut fsm = test_fsm::start(actions);
 
     fsm.go_to_b(());

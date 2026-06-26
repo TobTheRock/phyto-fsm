@@ -2,15 +2,15 @@
 
 state ParentA {
     [*] --> Inner
-    Inner --> Other : toOther
+    Inner --> Other : GoToOther
 }
 
 state ParentB {
     [*] --> Inner
-    Inner --> Other : toOther
+    Inner --> Other : GoToOther
 }
 
 [*] --> ParentA
-ParentA --> ParentB : toB
+ParentA --> ParentB : GoToParentB
 
 @enduml

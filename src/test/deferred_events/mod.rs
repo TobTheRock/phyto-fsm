@@ -8,13 +8,13 @@ fn build_deferred_events_fsm() -> Result<UmlFsm> {
     let mut builder = UmlFsmBuilder::new("DeferredEvents");
 
     builder.add_state("StateA", StateType::Enter);
-    builder.add_enter_action("StateA", Action::from("enterA"));
+    builder.add_enter_action("StateA", Action::from("EnterStateA"));
     builder.add_state("StateB", StateType::Simple);
-    builder.add_enter_action("StateB", Action::from("enterB"));
+    builder.add_enter_action("StateB", Action::from("EnterStateB"));
     builder.add_state("StateC", StateType::Simple);
-    builder.add_enter_action("StateC", Action::from("enterC"));
+    builder.add_enter_action("StateC", Action::from("EnterStateC"));
     builder.add_state("StateD", StateType::Simple);
-    builder.add_enter_action("StateD", Action::from("enterD"));
+    builder.add_enter_action("StateD", Action::from("EnterStateD"));
 
     builder.add_deferred_event("StateA", Event::from("GoToA"));
 

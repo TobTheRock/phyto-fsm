@@ -9,8 +9,8 @@ StateA --> StateC : ChangeState [CGuard] / ActionToC
 
 ' 
 state StateC {
-    StateC --> StateCa : ChangeState [CaGuard] / ActionToCa
-    StateC --> StateCb : ChangeState [CbGuard] / ActionToCb
+    StateC --> StateCA : ChangeState [CAGuard] / ActionToCA
+    StateC --> StateCB : ChangeState [CBGuard] / ActionToCB
 }
 
 @enduml

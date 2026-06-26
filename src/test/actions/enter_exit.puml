@@ -1,29 +1,29 @@
 @startuml EnterExitActions
 
-[*] --> A
+[*] --> StateA
 
-State A : entry / EnterA
-State A : exit / ExitA
+State StateA : entry / EnterStateA
+State StateA : exit / ExitStateA
 
-A -> A : GoToAFromA
-A -> B : GoToB 
-B -> A : GoToAFromB
+StateA -> StateA : GoToAFromA
+StateA -> StateB : GoToB
+StateB -> StateA : GoToAFromB
 
-' Composite state 
-state C {
-  C: entry / EnterC
-  C: exit / ExitC
+' Composite state
+state StateC {
+  StateC: entry / EnterStateC
+  StateC: exit / ExitStateC
 
   '  parent enter/exit are overwritten by substates
-  State C1 : entry / EnterC1
-  State C1 : exit / ExitC1
+  State StateCA : entry / EnterStateCA
+  State StateCA : exit / ExitStateCA
 
-  [*] --> C1
-  C1 -> C2 : GoToC2
+  [*] --> StateCA
+  StateCA -> StateCB : GoToCB
 }
-A -> C : GoToC
-A -> C1 : GoToC1FromA
-A -> C2 : GoToC2FromA
-C -> A : GoToAFromC
+StateA -> StateC : GoToC
+StateA -> StateCA : GoToCAFromA
+StateA -> StateCB : GoToCBFromA
+StateC -> StateA : GoToAFromC
 
 @enduml
