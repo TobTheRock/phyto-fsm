@@ -42,21 +42,21 @@ fn build_internal_transitions_fsm() -> Result<UmlFsm> {
     builder.add_exit_action("StateB", Action::from("ExitStateB"));
 
     builder.set_scope(Some(state_b));
-    builder.add_state("StateBa", StateType::Enter);
+    builder.add_state("StateBA", StateType::Enter);
 
-    // Internal transition on StateBa
+    // Internal transition on StateBA
     builder.add_transition(TransitionParameters {
-        source: "StateBa",
+        source: "StateBA",
         target: None,
         event: Some(Event("InternalEvent".into())),
         action: Some(Action("HandleInternalEvent".into())),
         guard: None,
     });
 
-    // Self transition on StateBa
+    // Self transition on StateBA
     builder.add_transition(TransitionParameters {
-        source: "StateBa",
-        target: Some("StateBa"),
+        source: "StateBA",
+        target: Some("StateBA"),
         event: Some(Event("SelfTransitionEvent".into())),
         action: Some(Action("HandleSelfTransitionEvent".into())),
         guard: None,
@@ -97,17 +97,17 @@ fn build_guards_fsm() -> Result<UmlFsm> {
     builder.set_scope(Some(state_c));
     builder.add_transition(TransitionParameters {
         source: "StateC",
-        target: Some("StateCa"),
+        target: Some("StateCA"),
         event: Some(Event("ChangeState".into())),
-        action: Some(Action("ActionToCa".into())),
-        guard: Some(Action("CaGuard".into())),
+        action: Some(Action("ActionToCA".into())),
+        guard: Some(Action("CAGuard".into())),
     });
     builder.add_transition(TransitionParameters {
         source: "StateC",
-        target: Some("StateCb"),
+        target: Some("StateCB"),
         event: Some(Event("ChangeState".into())),
-        action: Some(Action("ActionToCb".into())),
-        guard: Some(Action("CbGuard".into())),
+        action: Some(Action("ActionToCB".into())),
+        guard: Some(Action("CBGuard".into())),
     });
 
     builder.build()
@@ -120,21 +120,21 @@ fn build_transitions_fsm() -> Result<UmlFsm> {
         source: "StateA",
         target: Some("StateA"),
         event: Some(Event("SelfTransition".into())),
-        action: Some(Action("Action1".into())),
+        action: Some(Action("HandleSelfTransition".into())),
         guard: None,
     });
     builder.add_transition(TransitionParameters {
         source: "StateA",
         target: Some("StateB"),
         event: Some(Event("GoToB".into())),
-        action: Some(Action("Action2".into())),
+        action: Some(Action("HandleGoToB".into())),
         guard: None,
     });
     builder.add_transition(TransitionParameters {
         source: "StateA",
         target: Some("StateB"),
         event: Some(Event("GoToBDifferently".into())),
-        action: Some(Action("Action3".into())),
+        action: Some(Action("HandleGoToBDifferently".into())),
         guard: None,
     });
     builder.add_transition(TransitionParameters {
@@ -171,7 +171,7 @@ fn build_direct_transitions_fsm() -> Result<UmlFsm> {
         source: "StateA",
         target: Some("StateB"),
         event: None,
-        action: Some(Action("toStateB".into())),
+        action: Some(Action("ActionToB".into())),
         guard: None,
     });
 
@@ -180,7 +180,7 @@ fn build_direct_transitions_fsm() -> Result<UmlFsm> {
         source: "StateB",
         target: Some("StateC"),
         event: None,
-        action: Some(Action("toStateC".into())),
+        action: Some(Action("ActionToC".into())),
         guard: Some(Action("CanGoToC".into())),
     });
     builder.add_transition(TransitionParameters {
@@ -195,12 +195,12 @@ fn build_direct_transitions_fsm() -> Result<UmlFsm> {
     builder.add_transition(TransitionParameters {
         source: "StateB",
         target: Some("StateA"),
-        event: Some(Event("GotoA".into())),
+        event: Some(Event("GoToA".into())),
         action: None,
         guard: None,
     });
 
-    builder.add_enter_action("StateD", Action::from("enterD"));
+    builder.add_enter_action("StateD", Action::from("EnterStateD"));
 
     builder.build()
 }

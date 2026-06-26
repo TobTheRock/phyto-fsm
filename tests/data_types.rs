@@ -12,10 +12,10 @@ impl ITestFsmEventParams for ActionsWithClonableData {
     type GoToAParams = Vec<i32>;
 }
 impl ITestFsmActions for ActionsWithClonableData {
-    fn action1(&mut self, event: String) {
+    fn handle_go_to_b(&mut self, event: String) {
         println!("Action1 called with event data: {}", event);
     }
-    fn action2(&mut self, event: Vec<i32>) {
+    fn handle_go_to_a(&mut self, event: Vec<i32>) {
         println!("Action2 called with event data: {:?}", event);
     }
 }
@@ -35,10 +35,10 @@ impl<'a> ITestFsmEventParams for ActionsWithPointers<'a> {
     type GoToBParams = &'a str;
 }
 impl<'a> ITestFsmActions for ActionsWithPointers<'a> {
-    fn action1(&mut self, event: &'a str) {
+    fn handle_go_to_b(&mut self, event: &'a str) {
         println!("Action1 called with event data: {}", event);
     }
-    fn action2(&mut self, event: *const i32) {
+    fn handle_go_to_a(&mut self, event: *const i32) {
         unsafe {
             if !event.is_null() {
                 println!("Action2 called with event data: {}", *event);

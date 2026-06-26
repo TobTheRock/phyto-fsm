@@ -3,29 +3,29 @@
 [*] --> StateA
 
 StateA: GoToA /defer
-StateA: entry / enterA
+StateA: entry / EnterStateA
 StateA -> StateB: GoToB
 StateA -> StateC: GoToC
 StateA -> StateD: GoToD
 StateA -> StateF: GoToF
 
-StateB: entry / enterB
+StateB: entry / EnterStateB
 StateB -> StateA: GoToA
 
 ' Event is deferred again
 StateC: GoToA /defer
-StateC: entry / enterC
+StateC: entry / EnterStateC
 StateC -> StateB: GoToBFromC
 
 ' Event is deferred again after direct transition
 StateD: GoToA /defer
-StateD: entry / enterD
+StateD: entry / EnterStateD
 StateD -> StateB
 
 ' Substate inherits deferring from parent
 state StateE {
   StateE: GoToA /defer
-  state StateF : entry / enterF
+  state StateF : entry / EnterStateF
   StateF -> StateB: GoToBFromF
 }
 

@@ -25,8 +25,8 @@ impl TestFsmMachineEventParams for MyActions {
 }
 
 impl TestFsmMachineActions for MyActions {
-    fn action1(&mut self, _: ()) {}
-    fn action2(&mut self, _: ()) {}
+    fn handle_go_to_b(&mut self, _: ()) {}
+    fn handle_go_to_a(&mut self, _: ()) {}
 }
 
 #[test]

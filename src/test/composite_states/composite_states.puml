@@ -3,17 +3,17 @@
 state StateA {
     state StateAA {
         [*] --> StateAAA
-        StateAAA --> StateAAB : toAAB / actionInAAA
+        StateAAA --> StateAAB : GoToAAB / HandleGoToAAB
     }
     state StateAB
 
     [*] --> StateAA
-    StateAA --> StateAB : toAB / actionInAA
+    StateAA --> StateAB : GoToAB / HandleGoToAB
 }
 
 state StateB
 
 [*] --> StateA
-StateA --> StateB : toB / actionInA
+StateA --> StateB : GoToB / HandleGoToB
 
 @enduml

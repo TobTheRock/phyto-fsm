@@ -16,11 +16,11 @@ use mockall::mock;
 mock! {
     DeferredEventsActions {}
     impl IDeferredEventsActions for DeferredEventsActions {
-        fn enter_a(&mut self);
-        fn enter_b(&mut self);
-        fn enter_c(&mut self);
-        fn enter_d(&mut self);
-        fn enter_f(&mut self);
+        fn enter_state_a(&mut self);
+        fn enter_state_b(&mut self);
+        fn enter_state_c(&mut self);
+        fn enter_state_d(&mut self);
+        fn enter_state_f(&mut self);
     }
 }
 
@@ -38,10 +38,10 @@ impl IDeferredEventsEventParams for MockDeferredEventsActions {
 fn deferred_event_fires_after_leaving_deferring_state() {
     let mut actions = MockDeferredEventsActions::new();
 
-    actions.expect_enter_a().returning(|| ()).times(2); // once on start, once when deferred GoToA fires
-    actions.expect_enter_b().returning(|| ()).times(1); // GoToB transitions to StateB
-    actions.expect_enter_c().never();
-    actions.expect_enter_d().never();
+    actions.expect_enter_state_a().returning(|| ()).times(2); // once on start, once when deferred GoToA fires
+    actions.expect_enter_state_b().returning(|| ()).times(1); // GoToB transitions to StateB
+    actions.expect_enter_state_c().never();
+    actions.expect_enter_state_d().never();
 
     let mut fsm = deferred_events::start(actions);
 
@@ -49,7 +49,7 @@ fn deferred_event_fires_after_leaving_deferring_state() {
     fsm.go_to_a(());
 
     // GoToB transitions StateA -> StateB
-    // Deferred GoToA fires in StateB: StateB -> StateA (enter_a called again)
+    // Deferred GoToA fires in StateB: StateB -> StateA (enter_state_a called again)
     fsm.go_to_b(());
 }
 
@@ -57,10 +57,10 @@ fn deferred_event_fires_after_leaving_deferring_state() {
 fn event_is_redeferred() {
     let mut actions = MockDeferredEventsActions::new();
 
-    actions.expect_enter_a().returning(|| ()).times(2); // once on start, once when deferred GoToA finally fires
-    actions.expect_enter_b().returning(|| ()).times(1); // GoToBFromC transitions StateC -> StateB
-    actions.expect_enter_c().returning(|| ()).times(1); // GoToC transitions StateA -> StateC
-    actions.expect_enter_d().never();
+    actions.expect_enter_state_a().returning(|| ()).times(2); // once on start, once when deferred GoToA finally fires
+    actions.expect_enter_state_b().returning(|| ()).times(1); // GoToBFromC transitions StateC -> StateB
+    actions.expect_enter_state_c().returning(|| ()).times(1); // GoToC transitions StateA -> StateC
+    actions.expect_enter_state_d().never();
 
     let mut fsm = deferred_events::start(actions);
 
@@ -78,10 +78,10 @@ fn event_is_redeferred() {
 fn deferred_event_fires_after_direct_transition() {
     let mut actions = MockDeferredEventsActions::new();
 
-    actions.expect_enter_a().returning(|| ()).times(2); // once on start, once when deferred GoToA fires
-    actions.expect_enter_b().returning(|| ()).times(1); // direct transition StateD -> StateB
-    actions.expect_enter_c().never();
-    actions.expect_enter_d().returning(|| ()).times(1); // GoToD transitions StateA -> StateD
+    actions.expect_enter_state_a().returning(|| ()).times(2); // once on start, once when deferred GoToA fires
+    actions.expect_enter_state_b().returning(|| ()).times(1); // direct transition StateD -> StateB
+    actions.expect_enter_state_c().never();
+    actions.expect_enter_state_d().returning(|| ()).times(1); // GoToD transitions StateA -> StateD
 
     let mut fsm = deferred_events::start(actions);
 
@@ -97,11 +97,11 @@ fn deferred_event_fires_after_direct_transition() {
 fn substate_inherits_defer() {
     let mut actions = MockDeferredEventsActions::new();
 
-    actions.expect_enter_a().returning(|| ()).times(2); // once on start, once when deferred GoToA fires
-    actions.expect_enter_b().returning(|| ()).times(1); //  transition//  StateF -> StateB
-    actions.expect_enter_c().never();
-    actions.expect_enter_d().never();
-    actions.expect_enter_f().returning(|| ()).times(1); // transitions StateA -> StateF
+    actions.expect_enter_state_a().returning(|| ()).times(2); // once on start, once when deferred GoToA fires
+    actions.expect_enter_state_b().returning(|| ()).times(1); //  transition//  StateF -> StateB
+    actions.expect_enter_state_c().never();
+    actions.expect_enter_state_d().never();
+    actions.expect_enter_state_f().returning(|| ()).times(1); // transitions StateA -> StateF
 
     let mut fsm = deferred_events::start(actions);
 

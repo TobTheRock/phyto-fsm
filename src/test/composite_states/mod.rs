@@ -13,8 +13,8 @@ fn build_composite_states_fsm() -> Result<UmlFsm> {
     builder.add_transition(TransitionParameters {
         source: "StateA",
         target: Some("StateB"),
-        event: Some(Event("toB".into())),
-        action: Some(Action("actionInA".into())),
+        event: Some(Event("GoToB".into())),
+        action: Some(Action("HandleGoToB".into())),
         guard: None,
     });
 
@@ -25,8 +25,8 @@ fn build_composite_states_fsm() -> Result<UmlFsm> {
     builder.add_transition(TransitionParameters {
         source: "StateAA",
         target: Some("StateAB"),
-        event: Some(Event("toAB".into())),
-        action: Some(Action("actionInAA".into())),
+        event: Some(Event("GoToAB".into())),
+        action: Some(Action("HandleGoToAB".into())),
         guard: None,
     });
     // StateAA children
@@ -36,8 +36,8 @@ fn build_composite_states_fsm() -> Result<UmlFsm> {
     builder.add_transition(TransitionParameters {
         source: "StateAAA",
         target: Some("StateAAB"),
-        event: Some(Event("toAAB".into())),
-        action: Some(Action("actionInAAA".into())),
+        event: Some(Event("GoToAAB".into())),
+        action: Some(Action("HandleGoToAAB".into())),
         guard: None,
     });
 
@@ -48,32 +48,32 @@ fn build_substate_to_substate_fsm() -> Result<UmlFsm> {
     let mut builder = UmlFsmBuilder::new("Substate To Substate");
 
     // Root level
-    let state_a = builder.add_state("A", StateType::Enter);
-    let state_b = builder.add_state("B", StateType::Simple);
+    let state_a = builder.add_state("StateA", StateType::Enter);
+    let state_b = builder.add_state("StateB", StateType::Simple);
 
-    // A's children
+    // StateA's children
     builder.set_scope(Some(state_a));
-    builder.add_state("AA", StateType::Enter);
+    builder.add_state("StateAA", StateType::Enter);
 
-    // B's children
+    // StateB's children
     builder.set_scope(Some(state_b));
-    builder.add_state("BA", StateType::Simple);
-    builder.add_state("BB", StateType::Simple);
+    builder.add_state("StateBA", StateType::Simple);
+    builder.add_state("StateBB", StateType::Simple);
     builder.add_transition(TransitionParameters {
-        source: "BA",
-        target: Some("BB"),
-        event: Some(Event("toBB".into())),
-        action: Some(Action("actionInBA".into())),
+        source: "StateBA",
+        target: Some("StateBB"),
+        event: Some(Event("GoToBB".into())),
+        action: Some(Action("HandleGoToBB".into())),
         guard: None,
     });
 
     // Substate to substate transition (defined at root level but references substates)
     builder.set_scope(None);
     builder.add_transition(TransitionParameters {
-        source: "AA",
-        target: Some("BA"),
-        event: Some(Event("toBA".into())),
-        action: Some(Action("actionInAA".into())),
+        source: "StateAA",
+        target: Some("StateBA"),
+        event: Some(Event("GoToBA".into())),
+        action: Some(Action("HandleGoToBA".into())),
         guard: None,
     });
 
@@ -89,7 +89,7 @@ fn build_same_name_substates_fsm() -> Result<UmlFsm> {
     builder.add_transition(TransitionParameters {
         source: "ParentA",
         target: Some("ParentB"),
-        event: Some(Event("toB".into())),
+        event: Some(Event("GoToParentB".into())),
         action: None,
         guard: None,
     });
@@ -101,7 +101,7 @@ fn build_same_name_substates_fsm() -> Result<UmlFsm> {
     builder.add_transition(TransitionParameters {
         source: "Inner",
         target: Some("Other"),
-        event: Some(Event("toOther".into())),
+        event: Some(Event("GoToOther".into())),
         action: None,
         guard: None,
     });
@@ -113,7 +113,7 @@ fn build_same_name_substates_fsm() -> Result<UmlFsm> {
     builder.add_transition(TransitionParameters {
         source: "Inner",
         target: Some("Other"),
-        event: Some(Event("toOther".into())),
+        event: Some(Event("GoToOther".into())),
         action: None,
         guard: None,
     });

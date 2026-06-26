@@ -1,8 +1,8 @@
 @startuml TestFsm
 
-StateA -> StateA : SelfTransition / Action1
-StateA -> StateB : GoToB / Action2
-StateA -> StateB : GoToBDifferently / Action3
+StateA -> StateA : SelfTransition / HandleSelfTransition
+StateA -> StateB : GoToB / HandleGoToB
+StateA -> StateB : GoToBDifferently / HandleGoToBDifferently
 StateA -> StateC : GoToC
 ' Event lists cannot carry an action (one action binds to a single event's params)
 StateB -> StateA : GoToA, GoToADifferently

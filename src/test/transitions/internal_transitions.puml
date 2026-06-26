@@ -12,13 +12,13 @@ StateA -> StateA : SelfTransitionEvent / HandleSelfTransitionEvent
 StateA -> StateB : GoToB
 
 state StateB {
-  [*] --> StateBa
+  [*] --> StateBA
   StateB : entry / EnterStateB
   StateB : exit / ExitStateB
   ' Internal transition, will not cause exit and re-entry of the parent state
-  StateBa : InternalEvent / HandleInternalEvent
+  StateBA : InternalEvent / HandleInternalEvent
   ' Self transition causes exit and re-entry of the state
-  StateBa -> StateBa : SelfTransitionEvent / HandleSelfTransitionEvent
+  StateBA -> StateBA : SelfTransitionEvent / HandleSelfTransitionEvent
 }
 
 @enduml

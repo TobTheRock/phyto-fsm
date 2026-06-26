@@ -28,12 +28,12 @@ impl ITestFsmEventParams for MyActions {
 }
 
 impl ITestFsmActions for MyActions {
-    fn action1(&mut self, _event: ()) {
+    fn handle_go_to_b(&mut self, _event: ()) {
         println!("Action1: transitioning to StateB, requesting follow-up GoToA");
         self.follow_up_tx.send(FollowUpEvent::GoToA(42)).unwrap();
     }
 
-    fn action2(&mut self, event: i32) {
+    fn handle_go_to_a(&mut self, event: i32) {
         println!("Action2: transitioning back to StateA with param={event}");
     }
 }

@@ -1,15 +1,15 @@
 @startuml Substate To Substate
-state A {
- 'implicit definition of a substate' 
-  [*] --> AA
+state StateA {
+ 'implicit definition of a substate'
+  [*] --> StateAA
 }
 
-state B {
- 'implicit definition of substates' 
-  BA --> BB: toBB / actionInBA
+state StateB {
+ 'implicit definition of substates'
+  StateBA --> StateBB: GoToBB / HandleGoToBB
 }
 
-[*] --> A
+[*] --> StateA
 ' substate to substate transition '
-AA -> BA: toBA / actionInAA
+StateAA -> StateBA: GoToBA / HandleGoToBA
 @enduml

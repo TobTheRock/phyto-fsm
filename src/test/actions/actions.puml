@@ -1,7 +1,7 @@
 @startuml TestFsm
 
 [*] -> StateA
-StateA -> StateB : GoToB / Action1
-StateB -> StateA : GoToA / Action2
+StateA -> StateB : GoToB / HandleGoToB
+StateB -> StateA : GoToA / HandleGoToA
 
 @enduml
