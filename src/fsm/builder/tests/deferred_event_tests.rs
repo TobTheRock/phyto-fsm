@@ -1,6 +1,6 @@
 use itertools::Itertools;
 
-use crate::fsm::{Event, StateType, TransitionParameters, UmlFsmBuilder};
+use crate::fsm::{Event, StateType, TransitionParameters, TransitionTarget, UmlFsmBuilder};
 
 #[test]
 fn add_deferred_event_to_state() {
@@ -80,7 +80,7 @@ fn child_transition_overrides_parent_deferred_event() {
     builder.add_state("Child", StateType::Simple);
     builder.add_transition(TransitionParameters {
         source: "Child",
-        target: Some("Parent"),
+        target: TransitionTarget::State("Parent"),
         event: Some("Evt".into()),
         action: None,
         guard: None,
@@ -134,7 +134,7 @@ fn multi_level_override_breaks_chain() {
     // Parent handles the event via transition, breaking inheritance
     builder.add_transition(TransitionParameters {
         source: "Parent",
-        target: Some("Grandparent"),
+        target: TransitionTarget::State("Grandparent"),
         event: Some("Evt".into()),
         action: None,
         guard: None,
@@ -168,7 +168,7 @@ fn partial_override_of_multiple_events() {
     // Child handles EvtA, so only EvtB should be inherited
     builder.add_transition(TransitionParameters {
         source: "Child",
-        target: Some("Parent"),
+        target: TransitionTarget::State("Parent"),
         event: Some("EvtA".into()),
         action: None,
         guard: None,

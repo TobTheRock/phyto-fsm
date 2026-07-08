@@ -93,6 +93,7 @@ impl DeferredEventsCodegen {
                 match self {
                     #state_node::Real(real) => (real.defer_event)(event),
                     #state_node::Initial { .. } => false,
+                    #state_node::Exit() => false,
                 }
             }
         }

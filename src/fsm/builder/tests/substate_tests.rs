@@ -1,4 +1,6 @@
-use crate::fsm::{Event, State, StateType, TransitionParameters, UmlFsm, UmlFsmBuilder};
+use crate::fsm::{
+    Event, State, StateType, TransitionParameters, TransitionTarget, UmlFsm, UmlFsmBuilder,
+};
 
 use crate::fsm::model::StateId;
 
@@ -65,7 +67,7 @@ fn add_substate_transition() {
     builder.add_state("B", StateType::Simple);
     builder.add_transition(TransitionParameters {
         source: "A",
-        target: Some("B"),
+        target: TransitionTarget::State("B"),
         event: Some("E1".into()),
         action: None,
         guard: None,
@@ -75,7 +77,7 @@ fn add_substate_transition() {
     let parent_state = find_state(&fsm, "Parent");
     let a = parent_state.substates().find(|s| s.name() == "A").unwrap();
     let t = a.transitions().next().unwrap();
-    assert_eq!(t.destination.as_ref().unwrap().name(), "B");
+    assert_eq!(t.target_state().unwrap().name(), "B");
     assert_eq!(t.event, Some(&Event::from("E1")));
 }
 
@@ -90,7 +92,7 @@ fn add_substate_transition_same_name_different_parents() {
     builder.add_state("B", StateType::Simple);
     builder.add_transition(TransitionParameters {
         source: "A",
-        target: Some("B"),
+        target: TransitionTarget::State("B"),
         event: Some("E1".into()),
         action: None,
         guard: None,
@@ -101,7 +103,7 @@ fn add_substate_transition_same_name_different_parents() {
     builder.add_state("B", StateType::Simple);
     builder.add_transition(TransitionParameters {
         source: "A",
-        target: Some("B"),
+        target: TransitionTarget::State("B"),
         event: Some("E2".into()),
         action: None,
         guard: None,
@@ -131,7 +133,7 @@ fn add_substate_transition_creates_substates() {
     builder.set_scope(Some(parent));
     builder.add_transition(TransitionParameters {
         source: "A",
-        target: Some("B"),
+        target: TransitionTarget::State("B"),
         event: Some("E1".into()),
         action: None,
         guard: None,

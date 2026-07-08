@@ -1,5 +1,7 @@
 use crate::error::{Error, Result};
-use crate::fsm::{Event, StateId, StateType, TransitionParameters, UmlFsm, UmlFsmBuilder};
+use crate::fsm::{
+    Event, StateId, StateType, TransitionParameters, TransitionTarget, UmlFsm, UmlFsmBuilder,
+};
 
 mod error;
 mod plantuml;
@@ -44,11 +46,19 @@ fn add_fsm_elements(
         add_fsm_elements(builder, &composite.elements, Some(state))?;
     }
 
-    for enter_state in &elements.enter_states {
-        builder.add_state(enter_state, StateType::Enter);
-    }
     // Add transitions last, as they can create new states
     for transition in &elements.transitions {
+        // `[*] --> State`: the target is an enter state, no transition to record.
+        if let (plantuml::Node::Enter, plantuml::Node::State(name)) =
+            (&transition.source, &transition.target)
+        {
+            builder.add_state(name, StateType::Enter);
+            continue;
+        }
+        let source = match &transition.source {
+            plantuml::Node::State(name) => *name,
+            _ => continue, // pseudo-state as source (other than the enter case) is unsupported
+        };
         let label = transition
             .description
             .map(uml::TransitionLabel::try_from)
@@ -60,9 +70,14 @@ fn add_fsm_elements(
         // An event list desugars to one transition per event; a direct transition
         // (no events) still yields a single event-less transition.
         for event in events_or_none(events) {
+            let target = match &transition.target {
+                plantuml::Node::State(target) => TransitionTarget::State(target),
+                plantuml::Node::Exit => TransitionTarget::Final,
+                plantuml::Node::Enter => continue, // enter target on the right is invalid
+            };
             builder.add_transition(TransitionParameters {
-                source: transition.source,
-                target: Some(transition.target),
+                source,
+                target,
                 event,
                 action: action.clone(),
                 guard: guard.clone(),
@@ -85,7 +100,7 @@ fn add_fsm_elements(
                 for event in events_or_none(label.events) {
                     builder.add_transition(TransitionParameters {
                         source: desc.name,
-                        target: None,
+                        target: TransitionTarget::Internal,
                         event,
                         action: label.action.clone(),
                         guard: label.guard.clone(),
@@ -118,7 +133,7 @@ mod test {
 
     const FSM_CASES: TestCases<FsmTestData> = cases!(FsmTestData::all());
 
-    #[test_casing(12, FSM_CASES)]
+    #[test_casing(13, FSM_CASES)]
     fn parses_fsm(data: FsmTestData) {
         let fsm = UmlFsm::try_parse(data.content).unwrap();
         assert_eq!(data.parsed, fsm);

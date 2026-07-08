@@ -1,6 +1,6 @@
 use crate::{
     error::Result,
-    fsm::{Event, StateType, TransitionParameters, UmlFsm, UmlFsmBuilder},
+    fsm::{Event, StateType, TransitionParameters, TransitionTarget, UmlFsm, UmlFsmBuilder},
     test::{FsmTestData, utils::get_adjacent_file_path},
 };
 
@@ -9,21 +9,21 @@ fn build_internal_names_fsm() -> Result<UmlFsm> {
     builder.add_state("StateA", StateType::Enter);
     builder.add_transition(TransitionParameters {
         source: "StateA",
-        target: Some("StateB"),
+        target: TransitionTarget::State("StateB"),
         event: Some(Event("TriggerEvent".into())),
         action: None,
         guard: None,
     });
     builder.add_transition(TransitionParameters {
         source: "StateA",
-        target: Some("StateB"),
+        target: TransitionTarget::State("StateB"),
         event: Some(Event("ChangeState".into())),
         action: None,
         guard: None,
     });
     builder.add_transition(TransitionParameters {
         source: "StateA",
-        target: Some("StateB"),
+        target: TransitionTarget::State("StateB"),
         event: Some(Event("Start".into())),
         action: None,
         guard: None,

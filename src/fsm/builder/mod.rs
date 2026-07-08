@@ -5,7 +5,9 @@ use crate::error::Result;
 
 use self::error::BuildError;
 
-use super::model::{StateData, StateId, TransitionData, TransitionParameters, UmlFsm};
+use super::model::{
+    StateData, StateId, TargetData, TransitionData, TransitionParameters, TransitionTarget, UmlFsm,
+};
 use super::types::{Action, Event, StateType};
 
 mod error;
@@ -75,11 +77,22 @@ impl UmlFsmBuilder {
         );
 
         let from_id = self.find_or_create_state(source);
-        let to_id = target.map(|t| self.find_or_create_state(t));
+        let target = match target {
+            TransitionTarget::State(t) => TargetData::State(self.find_or_create_state(t)),
+            TransitionTarget::Internal => TargetData::Internal,
+            TransitionTarget::Final => {
+                // Only the top level can terminate the FSM; a composite substate exiting to
+                // `[*]` needs completion-transition desugaring, not implemented yet.
+                if self.arena[from_id].parent().is_some() {
+                    todo!("composite substate '{source}' exit to [*] (completion transitions)");
+                }
+                TargetData::Final
+            }
+        };
 
         let transition = TransitionData {
             source: from_id,
-            target: to_id,
+            target,
             event,
             action,
             guard,

@@ -1,4 +1,6 @@
-use crate::fsm::{Action, State, StateType, TransitionParameters, UmlFsm, UmlFsmBuilder};
+use crate::fsm::{
+    Action, State, StateType, TransitionParameters, TransitionTarget, UmlFsm, UmlFsmBuilder,
+};
 
 #[test]
 fn set_state_enter_and_exit_actions() {
@@ -17,7 +19,7 @@ fn set_actions_on_state_created_by_transition() {
     let mut builder = builder_with_enter();
     builder.add_transition(TransitionParameters {
         source: "Start",
-        target: Some("Other"),
+        target: TransitionTarget::State("Other"),
         event: Some("GoToOther".into()),
         action: None,
         guard: None,

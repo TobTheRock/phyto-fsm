@@ -78,7 +78,7 @@ fn group_state_actions(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fsm::{StateType, TransitionParameters, UmlFsmBuilder};
+    use crate::fsm::{StateType, TransitionParameters, TransitionTarget, UmlFsmBuilder};
 
     #[test]
     fn direct_transitions_not_in_events() {
@@ -86,14 +86,14 @@ mod tests {
         builder.add_state("A", StateType::Enter);
         builder.add_transition(TransitionParameters {
             source: "A",
-            target: Some("B"),
+            target: TransitionTarget::State("B"),
             event: None,
             action: Some("DoSomething".into()),
             guard: None,
         });
         builder.add_transition(TransitionParameters {
             source: "B",
-            target: Some("A"),
+            target: TransitionTarget::State("A"),
             event: Some("GoBack".into()),
             action: None,
             guard: None,
@@ -111,14 +111,14 @@ mod tests {
         builder.add_state("A", StateType::Enter);
         builder.add_transition(TransitionParameters {
             source: "A",
-            target: Some("B"),
+            target: TransitionTarget::State("B"),
             event: None,
             action: Some("DirectAction".into()),
             guard: None,
         });
         builder.add_transition(TransitionParameters {
             source: "B",
-            target: Some("A"),
+            target: TransitionTarget::State("A"),
             event: Some("GoBack".into()),
             action: Some("EventAction".into()),
             guard: None,
@@ -145,14 +145,14 @@ mod tests {
         builder.add_enter_action("C", "OnlyC".into());
         builder.add_transition(TransitionParameters {
             source: "A",
-            target: Some("B"),
+            target: TransitionTarget::State("B"),
             event: Some("Go".into()),
             action: None,
             guard: None,
         });
         builder.add_transition(TransitionParameters {
             source: "B",
-            target: Some("C"),
+            target: TransitionTarget::State("C"),
             event: Some("Go".into()),
             action: None,
             guard: None,
@@ -181,14 +181,14 @@ mod tests {
         builder.add_state("A", StateType::Enter);
         builder.add_transition(TransitionParameters {
             source: "A",
-            target: Some("B"),
+            target: TransitionTarget::State("B"),
             event: None,
             action: None,
             guard: Some("DirectGuard".into()),
         });
         builder.add_transition(TransitionParameters {
             source: "A",
-            target: Some("C"),
+            target: TransitionTarget::State("C"),
             event: Some("GoToC".into()),
             action: None,
             guard: Some("EventGuard".into()),

@@ -4,7 +4,7 @@ use crate::fsm::types::{Action, Event, StateType};
 
 use super::StateId;
 use super::state::{State, StateData};
-use super::transition::Transition;
+use super::transition::{Target, Transition};
 
 #[derive(Clone)]
 pub struct UmlFsm {
@@ -153,8 +153,14 @@ fn transition_key(
     Option<Action>,
     Option<Action>,
 ) {
+    let target = match &t.target {
+        Target::State(d) => Some(d.name().to_string()),
+        Target::Internal => None,
+        // Distinct from `Internal` so an exit edge never dedups against an internal one.
+        Target::Final => Some("[*]".to_string()),
+    };
     (
-        t.destination.map(|d| d.name().to_string()),
+        target,
         t.event.cloned(),
         t.action.cloned(),
         t.guard.cloned(),

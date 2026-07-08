@@ -1,4 +1,4 @@
-use crate::fsm::{State, StateType, TransitionParameters, UmlFsm, UmlFsmBuilder};
+use crate::fsm::{State, StateType, TransitionParameters, TransitionTarget, UmlFsm, UmlFsmBuilder};
 
 #[test]
 fn add_state_creates_simple_state() {
@@ -18,7 +18,7 @@ fn add_state_reuses_existing() {
     builder.add_state("A", StateType::Enter);
     builder.add_transition(TransitionParameters {
         source: "A",
-        target: Some("B"),
+        target: TransitionTarget::State("B"),
         event: Some("E1".into()),
         action: None,
         guard: None,
@@ -45,7 +45,7 @@ fn simple_state_upgraded_to_enter() {
     let mut builder = UmlFsmBuilder::new("TestFSM");
     builder.add_transition(TransitionParameters {
         source: "Start",
-        target: Some("B"),
+        target: TransitionTarget::State("B"),
         event: Some("E1".into()),
         action: None,
         guard: None,

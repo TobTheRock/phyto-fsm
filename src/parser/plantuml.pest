@@ -19,7 +19,6 @@ content = { element* }
 // Individual elements in the diagram
 element = {
     ws* ~ (
-        enter_transition |
         transition |
         composite_state |
         state_declaration_with_desc |
@@ -29,12 +28,14 @@ element = {
     )
 }
 
-// Enter transition: [*] --> StateName or [*] -> StateName
-enter_transition = { "[*]" ~ sp* ~ arrow ~ sp* ~ state_name ~ sp* ~ NEWLINE }
+// A transition endpoint: a named state or a pseudo-state
+endpoint = _{ state_name | pseudo_state }
+pseudo_state = @{ "[*]" }
 
-// Regular transition: State1 --> State2 : description
+// Transition: Endpoint --> Endpoint : description
+// Covers enter ([*] --> State), exit (State --> [*]) and regular (State --> State).
 transition = {
-    state_name ~ sp* ~ arrow ~ sp* ~ state_name ~
+    endpoint ~ sp* ~ arrow ~ sp* ~ endpoint ~
     (sp* ~ ":" ~ sp* ~ description)? ~
     sp* ~ NEWLINE
 }

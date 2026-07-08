@@ -1,6 +1,8 @@
 use crate::{
     error::Result,
-    fsm::{Action, Event, StateType, TransitionParameters, UmlFsm, UmlFsmBuilder},
+    fsm::{
+        Action, Event, StateType, TransitionParameters, TransitionTarget, UmlFsm, UmlFsmBuilder,
+    },
     test::{FsmTestData, utils::get_adjacent_file_path},
 };
 
@@ -12,7 +14,7 @@ fn build_composite_states_fsm() -> Result<UmlFsm> {
     builder.add_state("StateB", StateType::Simple);
     builder.add_transition(TransitionParameters {
         source: "StateA",
-        target: Some("StateB"),
+        target: TransitionTarget::State("StateB"),
         event: Some(Event("GoToB".into())),
         action: Some(Action("HandleGoToB".into())),
         guard: None,
@@ -24,7 +26,7 @@ fn build_composite_states_fsm() -> Result<UmlFsm> {
     builder.add_state("StateAB", StateType::Simple);
     builder.add_transition(TransitionParameters {
         source: "StateAA",
-        target: Some("StateAB"),
+        target: TransitionTarget::State("StateAB"),
         event: Some(Event("GoToAB".into())),
         action: Some(Action("HandleGoToAB".into())),
         guard: None,
@@ -35,7 +37,7 @@ fn build_composite_states_fsm() -> Result<UmlFsm> {
     builder.add_state("StateAAB", StateType::Simple);
     builder.add_transition(TransitionParameters {
         source: "StateAAA",
-        target: Some("StateAAB"),
+        target: TransitionTarget::State("StateAAB"),
         event: Some(Event("GoToAAB".into())),
         action: Some(Action("HandleGoToAAB".into())),
         guard: None,
@@ -61,7 +63,7 @@ fn build_substate_to_substate_fsm() -> Result<UmlFsm> {
     builder.add_state("StateBB", StateType::Simple);
     builder.add_transition(TransitionParameters {
         source: "StateBA",
-        target: Some("StateBB"),
+        target: TransitionTarget::State("StateBB"),
         event: Some(Event("GoToBB".into())),
         action: Some(Action("HandleGoToBB".into())),
         guard: None,
@@ -71,7 +73,7 @@ fn build_substate_to_substate_fsm() -> Result<UmlFsm> {
     builder.set_scope(None);
     builder.add_transition(TransitionParameters {
         source: "StateAA",
-        target: Some("StateBA"),
+        target: TransitionTarget::State("StateBA"),
         event: Some(Event("GoToBA".into())),
         action: Some(Action("HandleGoToBA".into())),
         guard: None,
@@ -88,7 +90,7 @@ fn build_same_name_substates_fsm() -> Result<UmlFsm> {
     let parent_b = builder.add_state("ParentB", StateType::Simple);
     builder.add_transition(TransitionParameters {
         source: "ParentA",
-        target: Some("ParentB"),
+        target: TransitionTarget::State("ParentB"),
         event: Some(Event("GoToParentB".into())),
         action: None,
         guard: None,
@@ -100,7 +102,7 @@ fn build_same_name_substates_fsm() -> Result<UmlFsm> {
     builder.add_state("Other", StateType::Simple);
     builder.add_transition(TransitionParameters {
         source: "Inner",
-        target: Some("Other"),
+        target: TransitionTarget::State("Other"),
         event: Some(Event("GoToOther".into())),
         action: None,
         guard: None,
@@ -112,7 +114,7 @@ fn build_same_name_substates_fsm() -> Result<UmlFsm> {
     builder.add_state("Other", StateType::Simple);
     builder.add_transition(TransitionParameters {
         source: "Inner",
-        target: Some("Other"),
+        target: TransitionTarget::State("Other"),
         event: Some(Event("GoToOther".into())),
         action: None,
         guard: None,

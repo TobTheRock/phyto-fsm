@@ -6,18 +6,47 @@ use super::state::{State, StateData};
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TransitionParameters<'a> {
     pub source: &'a str,
-    /// No target indicates an internal transition
-    pub target: Option<&'a str>,
+    pub target: TransitionTarget<'a>,
     /// No event indicates a direct transition
     pub event: Option<Event>,
     pub action: Option<Action>,
     pub guard: Option<Action>,
 }
 
+/// Where a transition leads, as named in the source syntax.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum TransitionTarget<'a> {
+    /// A named target state.
+    State(&'a str),
+    /// No target: an in-state (internal) transition.
+    Internal,
+    /// The `[*]` final pseudo-state that ends the enclosing region.
+    Final,
+}
+
+/// Where a transition leads, at the id/storage layer.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum TargetData {
+    /// A named target state.
+    State(StateId),
+    /// No target: an in-state (internal) transition.
+    Internal,
+    /// The `[*]` final pseudo-state that ends the enclosing region.
+    Final,
+}
+
+/// Where a transition leads, resolved against the arena (view layer).
+#[derive(Debug, Clone)]
+pub enum Target<'a> {
+    State(State<'a>),
+    Internal,
+    Final,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TransitionData {
     pub source: StateId,
-    pub target: Option<StateId>,
+    pub target: TargetData,
     pub event: Option<Event>,
     pub action: Option<Action>,
     pub guard: Option<Action>,
@@ -26,7 +55,7 @@ pub struct TransitionData {
 #[derive(Debug, Clone)]
 pub struct Transition<'a> {
     pub source: State<'a>,
-    pub destination: Option<State<'a>>,
+    pub target: Target<'a>,
     pub event: Option<&'a Event>,
     pub action: Option<&'a Action>,
     pub guard: Option<&'a Action>,
@@ -37,12 +66,28 @@ impl<'a> Transition<'a> {
         data: &'a TransitionData,
         arena: &'a indextree::Arena<StateData>,
     ) -> Transition<'a> {
+        let target = match &data.target {
+            TargetData::State(id) => Target::State(State::new(*id, arena)),
+            TargetData::Internal => Target::Internal,
+            TargetData::Final => Target::Final,
+        };
         Transition {
             source: State::new(data.source, arena),
-            destination: data.target.map(|id| State::new(id, arena)),
+            target,
             event: data.event.as_ref(),
             action: data.action.as_ref(),
             guard: data.guard.as_ref(),
+        }
+    }
+}
+
+impl<'a> Transition<'a> {
+    /// The named target state, if any (`None` for internal and final transitions).
+    #[cfg(test)]
+    pub fn target_state(&self) -> Option<&State<'a>> {
+        match &self.target {
+            Target::State(state) => Some(state),
+            Target::Internal | Target::Final => None,
         }
     }
 }
@@ -58,11 +103,11 @@ impl std::fmt::Display for Transition<'_> {
             .action
             .map(|a| format!(" / {}", a.0))
             .unwrap_or_default();
-        let dest = self
-            .destination
-            .as_ref()
-            .map(|d| d.name())
-            .unwrap_or("(internal)");
+        let dest = match &self.target {
+            Target::State(d) => d.name(),
+            Target::Internal => "(internal)",
+            Target::Final => "[*]",
+        };
         write!(
             f,
             "{} --[{}{}{}]--> {}",

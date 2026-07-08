@@ -1,6 +1,8 @@
 use crate::{
     error::Result,
-    fsm::{Action, Event, StateType, TransitionParameters, UmlFsm, UmlFsmBuilder},
+    fsm::{
+        Action, Event, StateType, TransitionParameters, TransitionTarget, UmlFsm, UmlFsmBuilder,
+    },
     test::{FsmTestData, utils::get_adjacent_file_path},
 };
 
@@ -20,7 +22,7 @@ fn build_deferred_events_fsm() -> Result<UmlFsm> {
 
     builder.add_transition(TransitionParameters {
         source: "StateA",
-        target: Some("StateB"),
+        target: TransitionTarget::State("StateB"),
         event: Some(Event("GoToB".into())),
         action: None,
         guard: None,
@@ -28,7 +30,7 @@ fn build_deferred_events_fsm() -> Result<UmlFsm> {
 
     builder.add_transition(TransitionParameters {
         source: "StateA",
-        target: Some("StateC"),
+        target: TransitionTarget::State("StateC"),
         event: Some(Event("GoToC".into())),
         action: None,
         guard: None,
@@ -36,7 +38,7 @@ fn build_deferred_events_fsm() -> Result<UmlFsm> {
 
     builder.add_transition(TransitionParameters {
         source: "StateA",
-        target: Some("StateD"),
+        target: TransitionTarget::State("StateD"),
         event: Some(Event("GoToD".into())),
         action: None,
         guard: None,
@@ -44,7 +46,7 @@ fn build_deferred_events_fsm() -> Result<UmlFsm> {
 
     builder.add_transition(TransitionParameters {
         source: "StateB",
-        target: Some("StateA"),
+        target: TransitionTarget::State("StateA"),
         event: Some(Event("GoToA".into())),
         action: None,
         guard: None,
@@ -54,7 +56,7 @@ fn build_deferred_events_fsm() -> Result<UmlFsm> {
 
     builder.add_transition(TransitionParameters {
         source: "StateC",
-        target: Some("StateB"),
+        target: TransitionTarget::State("StateB"),
         event: Some(Event("GoToBFromC".into())),
         action: None,
         guard: None,
@@ -64,7 +66,7 @@ fn build_deferred_events_fsm() -> Result<UmlFsm> {
 
     builder.add_transition(TransitionParameters {
         source: "StateD",
-        target: Some("StateB"),
+        target: TransitionTarget::State("StateB"),
         event: None,
         action: None,
         guard: None,
@@ -72,7 +74,7 @@ fn build_deferred_events_fsm() -> Result<UmlFsm> {
 
     builder.add_transition(TransitionParameters {
         source: "StateA",
-        target: Some("StateF"),
+        target: TransitionTarget::State("StateF"),
         event: Some("GoToF".into()),
         action: None,
         guard: None,
@@ -89,7 +91,7 @@ fn build_deferred_events_fsm() -> Result<UmlFsm> {
     // StateF -> StateB on GoToBFromF
     builder.add_transition(TransitionParameters {
         source: "StateF",
-        target: Some("StateB"),
+        target: TransitionTarget::State("StateB"),
         event: Some(Event("GoToBFromF".into())),
         action: None,
         guard: None,

@@ -1,4 +1,43 @@
-use crate::fsm::{Action, Event, StateType, TransitionParameters, UmlFsmBuilder};
+use crate::fsm::{
+    Action, Event, StateType, Target, TransitionParameters, TransitionTarget, UmlFsmBuilder,
+};
+
+#[test]
+fn add_exit_transition_targets_final() {
+    let mut builder = UmlFsmBuilder::new("ExitTop");
+    builder.add_state("A", StateType::Enter);
+    builder.add_transition(TransitionParameters {
+        source: "A",
+        target: TransitionTarget::Final,
+        event: Some("Stop".into()),
+        action: None,
+        guard: None,
+    });
+    let fsm = builder.build().unwrap();
+
+    let transitions: Vec<_> = fsm.transitions().collect();
+    assert_eq!(transitions.len(), 1);
+    assert!(matches!(transitions[0].target, Target::Final));
+    assert_eq!(transitions[0].event, Some(&Event::from("Stop")));
+}
+
+#[test]
+#[should_panic(expected = "composite substate")]
+fn composite_substate_exit_panics_for_now() {
+    let mut builder = UmlFsmBuilder::new("Comp");
+    let comp = builder.add_state("Comp", StateType::Simple);
+    builder.set_scope(Some(comp));
+    builder.add_state("Sub", StateType::Enter);
+
+    // Not supported yet: composite exit needs completion-transition desugaring.
+    builder.add_transition(TransitionParameters {
+        source: "Sub",
+        target: TransitionTarget::Final,
+        event: Some("Done".into()),
+        action: None,
+        guard: None,
+    });
+}
 
 #[test]
 fn add_transition() {
@@ -6,7 +45,7 @@ fn add_transition() {
     builder.add_state("A", StateType::Enter);
     builder.add_transition(TransitionParameters {
         source: "A",
-        target: Some("B"),
+        target: TransitionTarget::State("B"),
         event: Some("EventAB".into()),
         action: Some("ActionAB".into()),
         guard: None,
@@ -16,7 +55,7 @@ fn add_transition() {
     assert_eq!(fsm.states().count(), 2);
     let transitions: Vec<_> = fsm.transitions().collect();
     assert_eq!(transitions.len(), 1);
-    assert_eq!(transitions[0].destination.as_ref().unwrap().name(), "B");
+    assert_eq!(transitions[0].target_state().unwrap().name(), "B");
     assert_eq!(transitions[0].event, Some(&Event::from("EventAB")));
     assert_eq!(transitions[0].action, Some(&"ActionAB".into()));
 }
@@ -27,7 +66,7 @@ fn add_transition_creates_states() {
     builder.add_state("Start", StateType::Enter);
     builder.add_transition(TransitionParameters {
         source: "A",
-        target: Some("B"),
+        target: TransitionTarget::State("B"),
         event: Some("Event".into()),
         action: None,
         guard: None,
@@ -52,7 +91,7 @@ fn add_transition_finds_existing_substate_from_root_scope() {
     builder.set_scope(None);
     builder.add_transition(TransitionParameters {
         source: "Child",
-        target: Some("Other"),
+        target: TransitionTarget::State("Other"),
         event: Some("toOther".into()),
         action: None,
         guard: None,
@@ -71,7 +110,7 @@ fn add_transition_finds_existing_substate_from_root_scope() {
         .find(|s| s.name() == "Child")
         .unwrap();
     let t = child.transitions().next().unwrap();
-    assert_eq!(t.destination.as_ref().unwrap().name(), "Other");
+    assert_eq!(t.target_state().unwrap().name(), "Other");
 }
 
 #[test]
@@ -80,7 +119,7 @@ fn add_direct_transition() {
     builder.add_state("A", StateType::Enter);
     builder.add_transition(TransitionParameters {
         source: "A",
-        target: Some("B"),
+        target: TransitionTarget::State("B"),
         event: None,
         action: Some("DoSomething".into()),
         guard: None,
@@ -90,7 +129,7 @@ fn add_direct_transition() {
     let transitions: Vec<_> = fsm.transitions().collect();
     assert_eq!(transitions.len(), 1);
     assert_eq!(transitions[0].event, None);
-    assert_eq!(transitions[0].destination.as_ref().unwrap().name(), "B");
+    assert_eq!(transitions[0].target_state().unwrap().name(), "B");
     assert_eq!(transitions[0].action, Some(&Action::from("DoSomething")));
 }
 
@@ -100,14 +139,14 @@ fn add_guarded_direct_transitions() {
     builder.add_state("A", StateType::Enter);
     builder.add_transition(TransitionParameters {
         source: "A",
-        target: Some("B"),
+        target: TransitionTarget::State("B"),
         event: None,
         action: Some("GoToB".into()),
         guard: Some("CanGoToB".into()),
     });
     builder.add_transition(TransitionParameters {
         source: "A",
-        target: Some("C"),
+        target: TransitionTarget::State("C"),
         event: None,
         action: None,
         guard: Some("CanGoToC".into()),

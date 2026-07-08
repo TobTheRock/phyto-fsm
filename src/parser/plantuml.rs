@@ -19,10 +19,18 @@ pub struct StateDescription<'a> {
     pub description: &'a str,
 }
 
+/// A transition endpoint. A named state, or a pseudo state
+#[derive(Debug, PartialEq, Clone)]
+pub enum Node<'a> {
+    State(StateName<'a>),
+    Enter,
+    Exit,
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct TransitionDescription<'a> {
-    pub source: StateName<'a>,
-    pub target: StateName<'a>,
+    pub source: Node<'a>,
+    pub target: Node<'a>,
     pub description: Option<&'a str>,
 }
 
@@ -34,7 +42,6 @@ pub struct CompositeState<'a> {
 
 #[derive(Debug, PartialEq, Clone, Default)]
 pub struct StateElements<'a> {
-    pub enter_states: Vec<StateName<'a>>,
     pub transitions: Vec<TransitionDescription<'a>>,
     pub composite_states: Vec<CompositeState<'a>>,
     pub state_descriptions: Vec<StateDescription<'a>>,
@@ -84,7 +91,6 @@ fn parse_diagram_name(pair: Pair<'_>) -> Option<&str> {
 }
 
 fn parse_content(pair: Pair<'_>) -> Result<StateElements<'_>> {
-    let mut enter_states = Vec::new();
     let mut transitions = Vec::new();
     let mut composite_states = Vec::new();
     let mut state_descriptions = Vec::new();
@@ -96,11 +102,6 @@ fn parse_content(pair: Pair<'_>) -> Result<StateElements<'_>> {
 
         for element_inner in element.into_inner() {
             match element_inner.as_rule() {
-                Rule::enter_transition => {
-                    if let Some(state) = parse_enter_state(element_inner) {
-                        enter_states.push(state);
-                    }
-                }
                 Rule::transition => {
                     transitions.push(parse_transition(element_inner)?);
                 }
@@ -116,46 +117,41 @@ fn parse_content(pair: Pair<'_>) -> Result<StateElements<'_>> {
     }
 
     Ok(StateElements {
-        enter_states,
         transitions,
         composite_states,
         state_descriptions,
     })
 }
 
-fn parse_enter_state(pair: Pair<'_>) -> Option<StateName<'_>> {
-    pair.into_inner()
-        .find(|p| p.as_rule() == Rule::state_name)
-        .map(|p| p.as_str())
-}
-
 fn parse_transition(pair: Pair<'_>) -> Result<TransitionDescription<'_>> {
-    let mut from = None;
-    let mut to = None;
+    let mut source = None;
+    let mut target = None;
     let mut description = None;
 
     for inner in pair.into_inner() {
-        match inner.as_rule() {
-            Rule::state_name => {
-                if from.is_none() {
-                    from = Some(inner.as_str());
-                } else {
-                    to = Some(inner.as_str());
-                }
-            }
+        let node = match inner.as_rule() {
+            Rule::state_name => Node::State(inner.as_str()),
+            Rule::pseudo_state if source.is_none() => Node::Enter,
+            Rule::pseudo_state => Node::Exit,
             Rule::description => {
                 let text = inner.as_str().trim();
                 if !text.is_empty() {
                     description = Some(text);
                 }
+                continue;
             }
-            _ => {}
+            _ => continue,
+        };
+        if source.is_none() {
+            source = Some(node);
+        } else {
+            target = Some(node);
         }
     }
 
     Ok(TransitionDescription {
-        source: from.ok_or(ParseError::MissingSourceState)?,
-        target: to.ok_or(ParseError::MissingDestinationState)?,
+        source: source.ok_or(ParseError::MissingSourceState)?,
+        target: target.ok_or(ParseError::MissingDestinationState)?,
         description,
     })
 }
@@ -208,6 +204,17 @@ fn parse_state_description(
 
 #[cfg(test)]
 mod tests {
+    impl<'a> StateElements<'a> {
+        pub fn enter_states(&self) -> Vec<StateName<'a>> {
+            self.transitions
+                .iter()
+                .filter_map(|t| match (&t.source, &t.target) {
+                    (Node::Enter, Node::State(name)) => Some(*name),
+                    _ => None,
+                })
+                .collect()
+        }
+    }
     use super::*;
 
     impl CompositeState<'_> {
@@ -228,20 +235,24 @@ mod tests {
 
         fn assert_enters(&self, expected: &[&str]) -> &Self {
             assert_eq!(
-                self.elements.enter_states, expected,
+                self.elements.enter_states(),
+                expected,
                 "enter_states for '{}'",
                 self.name
             );
             self
         }
 
-        fn assert_transition(&self, idx: usize, from: &str, to: &str) -> &Self {
-            let t = &self.elements.transitions[idx];
-            assert_eq!(
-                (t.source, t.target),
-                (from, to),
-                "transition[{}] for '{}'",
-                idx,
+        /// Asserts a transition from `from` to `to` exists.
+        fn assert_transition(&self, from: Node, to: Node) -> &Self {
+            assert!(
+                self.elements
+                    .transitions
+                    .iter()
+                    .any(|t| t.source == from && t.target == to),
+                "no transition {:?} -> {:?} for '{}'",
+                from,
+                to,
                 self.name
             );
             self
@@ -274,8 +285,8 @@ mod tests {
         let full_input = format!("@startuml test\n{}@enduml", input);
         let diagram = StateDiagram::parse(&full_input).unwrap();
         assert_eq!(diagram.root.transitions.len(), 1);
-        assert_eq!(diagram.root.transitions[0].source, "A");
-        assert_eq!(diagram.root.transitions[0].target, "B");
+        assert_eq!(diagram.root.transitions[0].source, Node::State("A"));
+        assert_eq!(diagram.root.transitions[0].target, Node::State("B"));
         assert_eq!(diagram.root.transitions[0].description, Some("label"));
     }
 
@@ -295,15 +306,19 @@ mod tests {
         let input = "[*] --> A\n";
         let full_input = format!("@startuml test\n{}@enduml", input);
         let diagram = StateDiagram::parse(&full_input).unwrap();
-        assert_eq!(diagram.root.enter_states, vec!["A"]);
+        assert_eq!(diagram.root.enter_states(), vec!["A"]);
     }
 
     #[test]
     fn test_parse_exit_transition() {
-        let input = "[*] --> A\n";
+        let input = "Active --> [*] : Shutdown / Goodbye\n";
         let full_input = format!("@startuml test\n{}@enduml", input);
         let diagram = StateDiagram::parse(&full_input).unwrap();
-        assert_eq!(diagram.root.enter_states, vec!["A"]);
+        assert_eq!(diagram.root.transitions.len(), 1);
+        let t = &diagram.root.transitions[0];
+        assert_eq!(t.source, Node::State("Active"));
+        assert_eq!(t.target, Node::Exit);
+        assert_eq!(t.description, Some("Shutdown / Goodbye"));
     }
 
     #[test]
@@ -328,8 +343,9 @@ mod tests {
         "#;
         let diagram = StateDiagram::parse(input).unwrap();
         assert_eq!(diagram.name, Some("fsm name"));
-        assert_eq!(diagram.root.enter_states, vec!["A"]);
-        assert_eq!(diagram.root.transitions.len(), 3);
+        assert_eq!(diagram.root.enter_states(), vec!["A"]);
+        // [*] --> A (enter) + the 3 labelled transitions
+        assert_eq!(diagram.root.transitions.len(), 4);
     }
     #[test]
     fn test_parse_fsm_diagram_with_state_descriptions() {
@@ -343,8 +359,9 @@ mod tests {
         "#;
         let diagram = StateDiagram::parse(input).unwrap();
         assert_eq!(diagram.name, Some("fsm name"));
-        assert_eq!(diagram.root.enter_states, vec!["A"]);
-        assert_eq!(diagram.root.transitions.len(), 1);
+        assert_eq!(diagram.root.enter_states(), vec!["A"]);
+        // [*] --> A (enter) + A->B
+        assert_eq!(diagram.root.transitions.len(), 2);
     }
 
     #[test]
@@ -356,8 +373,9 @@ mod tests {
         @enduml
         "#;
         let diagram = StateDiagram::parse(input).unwrap();
-        assert_eq!(diagram.root.enter_states, vec!["StateA"]);
-        assert_eq!(diagram.root.transitions.len(), 1);
+        assert_eq!(diagram.root.enter_states(), vec!["StateA"]);
+        // [*] --> StateA (enter) + the self-transition
+        assert_eq!(diagram.root.transitions.len(), 2);
     }
 
     #[test]
@@ -386,8 +404,9 @@ mod tests {
         @enduml
         "#;
         let diagram = StateDiagram::parse(input).unwrap();
-        assert_eq!(diagram.root.enter_states, vec!["A"]);
-        assert_eq!(diagram.root.transitions.len(), 2);
+        assert_eq!(diagram.root.enter_states(), vec!["A"]);
+        // [*] --> A (enter) + A->B + B->C
+        assert_eq!(diagram.root.transitions.len(), 3);
     }
 
     #[test]
@@ -399,7 +418,7 @@ mod tests {
         @enduml
         "#;
         let diagram = StateDiagram::parse(input).unwrap();
-        assert_eq!(diagram.root.enter_states, vec!["A"]);
+        assert_eq!(diagram.root.enter_states(), vec!["A"]);
     }
 
     #[test]
@@ -457,7 +476,7 @@ mod tests {
             .assert_name("state1A")
             .assert_children(1)
             .assert_enters(&["State1B"])
-            .assert_transition(0, "State1C", "State1N");
+            .assert_transition(Node::State("State1C"), Node::State("State1N"));
 
         state1a
             .child(0)
@@ -546,7 +565,7 @@ mod tests {
             .assert_name("state1A")
             .assert_children(1)
             .assert_enters(&["State1B"])
-            .assert_transition(0, "State1C", "State1N");
+            .assert_transition(Node::State("State1C"), Node::State("State1N"));
 
         state1a
             .child(0)
@@ -564,7 +583,7 @@ mod tests {
             .assert_name("state2A")
             .assert_children(1)
             .assert_enters(&["State2B"])
-            .assert_transition(0, "State2C", "State2N");
+            .assert_transition(Node::State("State2C"), Node::State("State2N"));
 
         state2a
             .child(0)

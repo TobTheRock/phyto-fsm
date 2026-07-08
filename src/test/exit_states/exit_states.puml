@@ -1,0 +1,9 @@
+@startuml ExitStates
+
+[*] --> Active
+
+State Active : exit / Cleanup
+Active -> Active : Work
+Active --> [*] : Shutdown / Goodbye
+
+@enduml

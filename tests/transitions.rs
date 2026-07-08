@@ -28,7 +28,10 @@ impl ITestFsmEventParams for MockTestFsmActions {
 #[test]
 fn self_transition_action_called() {
     let mut actions = MockTestFsmActions::new();
-    actions.expect_handle_self_transition().returning(|_| ()).times(1);
+    actions
+        .expect_handle_self_transition()
+        .returning(|_| ())
+        .times(1);
     actions.expect_handle_go_to_b().returning(|_| ()).times(1);
     let mut fsm = test_fsm::start(actions);
 
@@ -50,7 +53,10 @@ fn final_state() {
 #[test]
 fn alternative_transition() {
     let mut actions = MockTestFsmActions::new();
-    actions.expect_handle_go_to_b_differently().returning(|_| ()).times(1);
+    actions
+        .expect_handle_go_to_b_differently()
+        .returning(|_| ())
+        .times(1);
     actions.expect_handle_go_to_b().times(0);
     let mut fsm = test_fsm::start(actions);
 
