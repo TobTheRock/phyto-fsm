@@ -1,12 +1,12 @@
 use crate::{
     error::Result,
-    fsm::{Action, Event, StateType, TransitionParameters, UmlFsm, UmlFsmBuilder},
+    fsm::{Action, Event, TransitionParameters, UmlFsm, UmlFsmBuilder},
     test::{FsmTestData, utils::get_adjacent_file_path},
 };
 
 fn build_actions_fsm() -> Result<UmlFsm> {
     let mut builder = UmlFsmBuilder::new("TestFsm");
-    builder.add_state("StateA", StateType::Enter);
+    builder.add_enter_state("StateA");
     builder.add_transition(TransitionParameters {
         source: "StateA",
         target: Some("StateB"),
@@ -28,10 +28,10 @@ fn build_enter_exit_fsm() -> Result<UmlFsm> {
     let mut builder = UmlFsmBuilder::new("EnterExitActions");
 
     // Root level states
-    builder.add_state("StateA", StateType::Enter);
+    builder.add_enter_state("StateA");
     builder.add_enter_action("StateA", Action::from("EnterStateA"));
     builder.add_exit_action("StateA", Action::from("ExitStateA"));
-    builder.add_state("StateB", StateType::Simple);
+    builder.add_state("StateB");
 
     // Root level transitions
     builder.add_transition(TransitionParameters {
@@ -57,16 +57,16 @@ fn build_enter_exit_fsm() -> Result<UmlFsm> {
     });
 
     // Composite state C
-    let state_c = builder.add_state("StateC", StateType::Simple);
+    let state_c = builder.add_state("StateC");
     builder.add_enter_action("StateC", Action::from("EnterStateC"));
     builder.add_exit_action("StateC", Action::from("ExitStateC"));
 
     // C's children
     builder.set_scope(Some(state_c));
-    builder.add_state("StateCA", StateType::Enter);
+    builder.add_enter_state("StateCA");
     builder.add_enter_action("StateCA", Action::from("EnterStateCA"));
     builder.add_exit_action("StateCA", Action::from("ExitStateCA"));
-    builder.add_state("StateCB", StateType::Simple);
+    builder.add_state("StateCB");
     builder.add_transition(TransitionParameters {
         source: "StateCA",
         target: Some("StateCB"),

@@ -1,5 +1,5 @@
 use crate::error::{Error, Result};
-use crate::fsm::{Event, StateId, StateType, TransitionParameters, UmlFsm, UmlFsmBuilder};
+use crate::fsm::{Event, StateId, TransitionParameters, UmlFsm, UmlFsmBuilder};
 
 mod error;
 mod plantuml;
@@ -40,12 +40,12 @@ fn add_fsm_elements(
     let previous_scope = builder.set_scope(scope);
 
     for composite in &elements.composite_states {
-        let state = builder.add_state(composite.name, StateType::Simple);
+        let state = builder.add_state(composite.name);
         add_fsm_elements(builder, &composite.elements, Some(state))?;
     }
 
     for enter_state in &elements.enter_states {
-        builder.add_state(enter_state, StateType::Enter);
+        builder.add_enter_state(enter_state);
     }
     // Add transitions last, as they can create new states
     for transition in &elements.transitions {

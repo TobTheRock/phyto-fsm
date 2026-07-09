@@ -1,18 +1,28 @@
-use crate::fsm::types::{Action, Event, StateType};
+use crate::fsm::types::{Action, Event};
 
 use super::StateId;
-use super::transition::Transition;
+use super::transition::{Transition, TransitionData};
 
 #[derive(Debug, Clone)]
 pub struct StateData {
     pub name: String,
-    pub state_type: StateType,
     pub transitions: Vec<super::TransitionData>,
     pub enter_action: Option<Action>,
     pub exit_action: Option<Action>,
     pub enter_state: Option<StateId>,
     /// Includes the inherited events from potential parents
     pub deferred_events: Vec<Event>,
+}
+
+impl StateData {
+    /// Whether this state is the initial state of its scope (owns an [`Enter`] transition).
+    ///
+    /// [`Enter`]: TransitionData::Enter
+    pub fn is_enter(&self) -> bool {
+        self.transitions
+            .iter()
+            .any(|t| matches!(t, TransitionData::Enter { .. }))
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -30,8 +40,11 @@ impl<'a> State<'a> {
         &self.node_data().name
     }
 
-    pub fn state_type(&self) -> StateType {
-        self.node_data().state_type
+    /// Whether this state is the initial state of its scope (owns an [`Enter`] transition).
+    ///
+    /// [`Enter`]: TransitionData::Enter
+    pub fn is_enter(&self) -> bool {
+        self.node_data().is_enter()
     }
 
     pub fn enter_action(&self) -> Option<&Action> {
@@ -42,11 +55,14 @@ impl<'a> State<'a> {
         self.node_data().exit_action.as_ref()
     }
 
+    /// The state's real outgoing transitions. The `Enter` pseudo-transition (whose source is
+    /// `[*]`, not this state) is excluded — query it via [`is_enter`](Self::is_enter).
     pub fn transitions(&self) -> impl Iterator<Item = Transition<'_>> {
         let arena = self.arena;
         self.node_data()
             .transitions
             .iter()
+            .filter(|t| !matches!(t, TransitionData::Enter { .. }))
             .map(move |t| Transition::from(t, arena))
     }
 
@@ -87,7 +103,7 @@ impl<'a> State<'a> {
 impl<'a> PartialEq for State<'a> {
     fn eq(&self, other: &Self) -> bool {
         self.name() == other.name()
-            && self.state_type() == other.state_type()
+            && self.is_enter() == other.is_enter()
             && self.parent() == other.parent()
     }
 }

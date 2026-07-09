@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::fsm::types::{Action, Event, StateType};
+use crate::fsm::types::{Action, Event};
 
 use super::StateId;
 use super::state::{State, StateData};
@@ -38,12 +38,15 @@ impl UmlFsm {
         })
     }
 
+    /// All real transitions across the FSM. `Enter` pseudo-transitions are excluded
+    /// (see [`State::transitions`]).
     pub fn transitions(&self) -> impl Iterator<Item = Transition<'_>> {
         let arena = &self.arena;
         self.arena.iter().flat_map(move |node| {
             node.get()
                 .transitions
                 .iter()
+                .filter(|t| !matches!(t, super::TransitionData::Enter { .. }))
                 .map(|t| Transition::from(t, arena))
         })
     }
@@ -65,17 +68,17 @@ impl UmlFsm {
         let self_enter = self.enter_state();
         let other_enter = other.enter_state();
         self_enter.name() == other_enter.name()
-            && self_enter.state_type() == other_enter.state_type()
+            && self_enter.is_enter() == other_enter.is_enter()
     }
 
     fn states_eq(&self, other: &Self) -> bool {
         let self_states: HashSet<_> = self
             .states()
-            .map(|s| (s.name().to_string(), s.state_type()))
+            .map(|s| (s.name().to_string(), s.is_enter()))
             .collect();
         let other_states: HashSet<_> = other
             .states()
-            .map(|s| (s.name().to_string(), s.state_type()))
+            .map(|s| (s.name().to_string(), s.is_enter()))
             .collect();
         self_states == other_states
     }
@@ -117,10 +120,7 @@ impl UmlFsm {
         indent: usize,
     ) -> std::fmt::Result {
         let prefix = " ".repeat(indent * 2);
-        let type_marker = match state.state_type() {
-            StateType::Enter => "[*] ",
-            StateType::Simple => "",
-        };
+        let type_marker = if state.is_enter() { "[*] " } else { "" };
         let enter = state
             .enter_action()
             .map(|a| format!(" > {}", a.0))

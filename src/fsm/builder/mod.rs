@@ -6,7 +6,7 @@ use crate::error::Result;
 use self::error::BuildError;
 
 use super::model::{StateData, StateId, TransitionData, TransitionParameters, UmlFsm};
-use super::types::{Action, Event, StateType};
+use super::types::{Action, Event};
 
 mod error;
 mod inheritance;
@@ -18,10 +18,9 @@ use scoped_arena::ScopedArena;
 mod tests;
 
 impl StateData {
-    fn new(name: &str, state_type: StateType) -> Self {
+    fn new(name: &str) -> Self {
         StateData {
             name: name.to_string(),
-            state_type,
             transitions: vec![],
             enter_action: None,
             exit_action: None,
@@ -49,15 +48,24 @@ impl UmlFsmBuilder {
         self.arena.set_scope(scope)
     }
 
-    pub fn add_state(&mut self, name: &str, state_type: StateType) -> StateId {
-        debug!("Adding state '{}' of type {:?}", name, state_type);
+    pub fn add_state(&mut self, name: &str) -> StateId {
+        debug!("Adding state '{}'", name);
+        self.find_state_in_scope(name)
+            .unwrap_or_else(|| self.create_state(name))
+    }
 
-        if let Some(id) = self.find_state_in_scope(name) {
-            self.update_non_simple_state_type(id, state_type, name);
-            return id;
+    /// Marks `name` as the initial state of the current scope (`[*] --> name`),
+    /// creating it if needed. Idempotent — a state owns at most one `Enter` transition.
+    pub fn add_enter_state(&mut self, name: &str) -> StateId {
+        debug!("Adding enter state '{}'", name);
+        let id = self.add_state(name);
+        if !self.arena[id].get().is_enter() {
+            self.arena[id]
+                .get_mut()
+                .transitions
+                .push(TransitionData::Enter { target: id });
         }
-
-        self.create_state(name, state_type)
+        id
     }
 
     pub fn add_transition(&mut self, params: TransitionParameters) {
@@ -156,16 +164,16 @@ impl UmlFsmBuilder {
 
     fn find_or_create_state(&mut self, name: &str) -> StateId {
         self.find_descendant_state(name)
-            .unwrap_or_else(|| self.create_state(name, StateType::Simple))
+            .unwrap_or_else(|| self.create_state(name))
     }
 
-    fn create_state(&mut self, name: &str, state_type: StateType) -> StateId {
+    fn create_state(&mut self, name: &str) -> StateId {
         debug!(
             "Creating state '{}' in scope {:?}",
             name,
             self.arena.scope()
         );
-        let state_data = StateData::new(name, state_type);
+        let state_data = StateData::new(name);
         self.arena.new_node_in_scope(state_data)
     }
 
@@ -186,7 +194,7 @@ impl UmlFsmBuilder {
         let enter_states = self
             .arena
             .root_nodes()
-            .filter(|node| node.get().state_type == StateType::Enter);
+            .filter(|node| node.get().is_enter());
         let enter_state_names = || enter_states.clone().map(|node| node.get().name.as_str());
 
         debug!("Root enter states: {:?}", enter_state_names().collect_vec());
@@ -208,7 +216,7 @@ impl UmlFsmBuilder {
         while let Some(nested_enter) = self
             .arena
             .children(current)
-            .find(|child| self.arena[*child].get().state_type == StateType::Enter)
+            .find(|child| self.arena[*child].get().is_enter())
         {
             current = nested_enter;
         }
@@ -229,19 +237,4 @@ impl UmlFsmBuilder {
             .and_then(|node| self.arena.get_node_id(node))
     }
 
-    fn update_non_simple_state_type(&mut self, id: StateId, state_type: StateType, name: &str) {
-        let current_type = self.arena[id].get().state_type;
-        if state_type != StateType::Simple && current_type == StateType::Simple {
-            debug!(
-                "Updating Type of state '{}' from {:?} to {:?}",
-                name, current_type, state_type
-            );
-            self.arena[id].get_mut().state_type = state_type;
-        } else if state_type != StateType::Simple && current_type != state_type {
-            debug!(
-                "State '{}' already has type {:?}, ignoring {:?}",
-                name, current_type, state_type
-            );
-        }
-    }
 }

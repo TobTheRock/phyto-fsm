@@ -78,12 +78,12 @@ fn group_state_actions(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fsm::{StateType, TransitionParameters, UmlFsmBuilder};
+    use crate::fsm::{TransitionParameters, UmlFsmBuilder};
 
     #[test]
     fn direct_transitions_not_in_events() {
         let mut builder = UmlFsmBuilder::new("TestFSM");
-        builder.add_state("A", StateType::Enter);
+        builder.add_enter_state("A");
         builder.add_transition(TransitionParameters {
             source: "A",
             target: Some("B"),
@@ -108,7 +108,7 @@ mod tests {
     #[test]
     fn direct_transition_actions_separate_from_event_actions() {
         let mut builder = UmlFsmBuilder::new("TestFSM");
-        builder.add_state("A", StateType::Enter);
+        builder.add_enter_state("A");
         builder.add_transition(TransitionParameters {
             source: "A",
             target: Some("B"),
@@ -137,11 +137,11 @@ mod tests {
     #[test]
     fn enter_actions_group_states_sharing_one_action() {
         let mut builder = UmlFsmBuilder::new("TestFSM");
-        builder.add_state("A", StateType::Enter);
+        builder.add_enter_state("A");
         builder.add_enter_action("A", "OnEnter".into());
-        builder.add_state("B", StateType::Simple);
+        builder.add_state("B");
         builder.add_enter_action("B", "OnEnter".into());
-        builder.add_state("C", StateType::Simple);
+        builder.add_state("C");
         builder.add_enter_action("C", "OnlyC".into());
         builder.add_transition(TransitionParameters {
             source: "A",
@@ -178,7 +178,7 @@ mod tests {
     #[test]
     fn direct_transition_guards_separate_from_event_guards() {
         let mut builder = UmlFsmBuilder::new("TestFSM");
-        builder.add_state("A", StateType::Enter);
+        builder.add_enter_state("A");
         builder.add_transition(TransitionParameters {
             source: "A",
             target: Some("B"),

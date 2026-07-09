@@ -1,6 +1,6 @@
 use crate::{
     error::Result,
-    fsm::{Action, Event, StateType, TransitionParameters, UmlFsm, UmlFsmBuilder},
+    fsm::{Action, Event, TransitionParameters, UmlFsm, UmlFsmBuilder},
     test::{FsmTestData, utils::get_adjacent_file_path},
 };
 
@@ -8,11 +8,11 @@ fn build_four_seasons_fsm() -> Result<UmlFsm> {
     let mut builder = UmlFsmBuilder::new("PlantFsm");
 
     // Root level states
-    let winter = builder.add_state("Winter", StateType::Enter);
+    let winter = builder.add_enter_state("Winter");
     builder.add_enter_action("Winter", Action::from("WinterIsComing"));
-    let spring = builder.add_state("Spring", StateType::Simple);
-    let summer = builder.add_state("Summer", StateType::Simple);
-    let autumn = builder.add_state("Autumn", StateType::Simple);
+    let spring = builder.add_state("Spring");
+    let summer = builder.add_state("Summer");
+    let autumn = builder.add_state("Autumn");
 
     // Root level transitions
     builder.add_transition(TransitionParameters {
@@ -46,8 +46,8 @@ fn build_four_seasons_fsm() -> Result<UmlFsm> {
 
     // Winter substates
     builder.set_scope(Some(winter));
-    builder.add_state("Freezing", StateType::Enter);
-    builder.add_state("Mild", StateType::Simple);
+    builder.add_enter_state("Freezing");
+    builder.add_state("Mild");
     builder.add_transition(TransitionParameters {
         source: "Freezing",
         target: Some("Mild"),
@@ -73,8 +73,8 @@ fn build_four_seasons_fsm() -> Result<UmlFsm> {
 
     // Spring substates
     builder.set_scope(Some(spring));
-    builder.add_state("Brisk", StateType::Enter);
-    builder.add_state("Temperate", StateType::Simple);
+    builder.add_enter_state("Brisk");
+    builder.add_state("Temperate");
     builder.add_transition(TransitionParameters {
         source: "Brisk",
         target: Some("Temperate"),
@@ -92,8 +92,8 @@ fn build_four_seasons_fsm() -> Result<UmlFsm> {
 
     // Summer substates
     builder.set_scope(Some(summer));
-    builder.add_state("Balmy", StateType::Enter);
-    builder.add_state("Scorching", StateType::Simple);
+    builder.add_enter_state("Balmy");
+    builder.add_state("Scorching");
     builder.add_enter_action("Scorching", Action::from("StartHeatWave"));
     builder.add_exit_action("Scorching", Action::from("EndHeatWave"));
     builder.add_transition(TransitionParameters {
@@ -120,8 +120,8 @@ fn build_four_seasons_fsm() -> Result<UmlFsm> {
 
     // Autumn substates
     builder.set_scope(Some(autumn));
-    builder.add_state("Crisp", StateType::Enter);
-    builder.add_state("Pleasant", StateType::Simple);
+    builder.add_enter_state("Crisp");
+    builder.add_state("Pleasant");
     builder.add_transition(TransitionParameters {
         source: "Crisp",
         target: Some("Pleasant"),

@@ -6,7 +6,7 @@ use crate::fsm::types::{Action, Event};
 use super::error::BuildError;
 
 use super::scoped_arena::ScopedArena;
-use crate::fsm::model::StateData;
+use crate::fsm::model::{StateData, TransitionData};
 
 pub fn injective_action_mapping(arena: &ScopedArena<StateData>) -> Result<()> {
     let action_events = arena
@@ -68,6 +68,7 @@ fn for_each_transition_group(
     arena
         .iter()
         .flat_map(|node| node.get().transitions.iter())
+        .filter(|t| !matches!(t, TransitionData::Enter { .. }))
         .map(|t| (t.source(), t.event().cloned(), t.guard().cloned()))
         .chunk_by(|(source, event, _)| (*source, event.clone()))
         .into_iter()

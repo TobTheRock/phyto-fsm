@@ -1,4 +1,4 @@
-use crate::fsm::{Action, State, StateType, TransitionParameters, UmlFsm, UmlFsmBuilder};
+use crate::fsm::{Action, State, TransitionParameters, UmlFsm, UmlFsmBuilder};
 
 #[test]
 fn set_state_enter_and_exit_actions() {
@@ -34,9 +34,9 @@ fn set_actions_on_state_created_by_transition() {
 #[test]
 fn set_substate_actions() {
     let mut builder = builder_with_enter();
-    let parent = builder.add_state("Parent", StateType::Simple);
+    let parent = builder.add_state("Parent");
     builder.set_scope(Some(parent));
-    builder.add_state("Child", StateType::Enter);
+    builder.add_enter_state("Child");
     builder.add_enter_action("Child", Action::from("OnEnterChild"));
     builder.add_exit_action("Child", Action::from("OnExitChild"));
     let fsm = builder.build().unwrap();
@@ -52,7 +52,7 @@ fn set_substate_actions() {
 
 fn builder_with_enter() -> UmlFsmBuilder {
     let mut builder = UmlFsmBuilder::new("TestFSM");
-    builder.add_state("Start", StateType::Enter);
+    builder.add_enter_state("Start");
     builder
 }
 

@@ -1,21 +1,21 @@
-use crate::fsm::{State, StateType, TransitionParameters, UmlFsm, UmlFsmBuilder};
+use crate::fsm::{State, TransitionParameters, UmlFsm, UmlFsmBuilder};
 
 #[test]
 fn add_state_creates_simple_state() {
     let mut builder = UmlFsmBuilder::new("TestFSM");
-    builder.add_state("Start", StateType::Enter);
-    builder.add_state("State1", StateType::Simple);
+    builder.add_enter_state("Start");
+    builder.add_state("State1");
     let fsm = builder.build().unwrap();
 
     assert_eq!(fsm.states().count(), 2);
     let state1 = find_state(&fsm, "State1");
-    assert_eq!(state1.state_type(), StateType::Simple);
+    assert!(!state1.is_enter());
 }
 
 #[test]
 fn add_state_reuses_existing() {
     let mut builder = UmlFsmBuilder::new("TestFSM");
-    builder.add_state("A", StateType::Enter);
+    builder.add_enter_state("A");
     builder.add_transition(TransitionParameters {
         source: "A",
         target: Some("B"),
@@ -23,7 +23,7 @@ fn add_state_reuses_existing() {
         action: None,
         guard: None,
     });
-    builder.add_state("B", StateType::Simple);
+    builder.add_state("B");
     let fsm = builder.build().unwrap();
 
     assert_eq!(fsm.states().count(), 2);
@@ -32,12 +32,12 @@ fn add_state_reuses_existing() {
 #[test]
 fn enter_state_not_overwritten_by_simple() {
     let mut builder = UmlFsmBuilder::new("TestFSM");
-    builder.add_state("Start", StateType::Enter);
-    builder.add_state("Start", StateType::Simple);
+    builder.add_enter_state("Start");
+    builder.add_state("Start");
     let fsm = builder.build().unwrap();
 
     let start = find_state(&fsm, "Start");
-    assert_eq!(start.state_type(), StateType::Enter);
+    assert!(start.is_enter());
 }
 
 #[test]
@@ -50,11 +50,11 @@ fn simple_state_upgraded_to_enter() {
         action: None,
         guard: None,
     });
-    builder.add_state("Start", StateType::Enter);
+    builder.add_enter_state("Start");
     let fsm = builder.build().unwrap();
 
     let start = find_state(&fsm, "Start");
-    assert_eq!(start.state_type(), StateType::Enter);
+    assert!(start.is_enter());
 }
 
 fn find_state<'a>(fsm: &'a UmlFsm, name: &str) -> State<'a> {

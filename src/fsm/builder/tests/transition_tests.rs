@@ -1,10 +1,10 @@
 use crate::fsm::model::transition::Transition;
-use crate::fsm::{Action, Event, StateType, TransitionParameters, UmlFsmBuilder};
+use crate::fsm::{Action, Event, TransitionParameters, UmlFsmBuilder};
 
 #[test]
 fn transitions_split_into_event_internal_and_direct_variants() {
     let mut builder = UmlFsmBuilder::new("TestFSM");
-    builder.add_state("A", StateType::Enter);
+    builder.add_enter_state("A");
     // event transition: has event and target
     builder.add_transition(TransitionParameters {
         source: "A",
@@ -45,7 +45,7 @@ fn transitions_split_into_event_internal_and_direct_variants() {
 #[test]
 fn add_transition() {
     let mut builder = UmlFsmBuilder::new("TestFSM");
-    builder.add_state("A", StateType::Enter);
+    builder.add_enter_state("A");
     builder.add_transition(TransitionParameters {
         source: "A",
         target: Some("B"),
@@ -66,7 +66,7 @@ fn add_transition() {
 #[test]
 fn add_transition_creates_states() {
     let mut builder = UmlFsmBuilder::new("TestFSM");
-    builder.add_state("Start", StateType::Enter);
+    builder.add_enter_state("Start");
     builder.add_transition(TransitionParameters {
         source: "A",
         target: Some("B"),
@@ -85,11 +85,11 @@ fn add_transition_creates_states() {
 #[test]
 fn add_transition_finds_existing_substate_from_root_scope() {
     let mut builder = UmlFsmBuilder::new("TestFSM");
-    builder.add_state("Start", StateType::Enter);
+    builder.add_enter_state("Start");
 
-    let parent = builder.add_state("Parent", StateType::Simple);
+    let parent = builder.add_state("Parent");
     builder.set_scope(Some(parent));
-    builder.add_state("Child", StateType::Simple);
+    builder.add_state("Child");
 
     builder.set_scope(None);
     builder.add_transition(TransitionParameters {
@@ -119,7 +119,7 @@ fn add_transition_finds_existing_substate_from_root_scope() {
 #[test]
 fn add_direct_transition() {
     let mut builder = UmlFsmBuilder::new("TestFSM");
-    builder.add_state("A", StateType::Enter);
+    builder.add_enter_state("A");
     builder.add_transition(TransitionParameters {
         source: "A",
         target: Some("B"),
@@ -139,7 +139,7 @@ fn add_direct_transition() {
 #[test]
 fn add_guarded_direct_transitions() {
     let mut builder = UmlFsmBuilder::new("TestFSM");
-    builder.add_state("A", StateType::Enter);
+    builder.add_enter_state("A");
     builder.add_transition(TransitionParameters {
         source: "A",
         target: Some("B"),

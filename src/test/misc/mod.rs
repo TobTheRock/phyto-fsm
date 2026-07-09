@@ -1,12 +1,12 @@
 use crate::{
     error::Result,
-    fsm::{Event, StateType, TransitionParameters, UmlFsm, UmlFsmBuilder},
+    fsm::{Event, TransitionParameters, UmlFsm, UmlFsmBuilder},
     test::{FsmTestData, utils::get_adjacent_file_path},
 };
 
 fn build_internal_names_fsm() -> Result<UmlFsm> {
     let mut builder = UmlFsmBuilder::new("InternalNames");
-    builder.add_state("StateA", StateType::Enter);
+    builder.add_enter_state("StateA");
     builder.add_transition(TransitionParameters {
         source: "StateA",
         target: Some("StateB"),

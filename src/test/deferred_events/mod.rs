@@ -1,19 +1,19 @@
 use crate::{
     error::Result,
-    fsm::{Action, Event, StateType, TransitionParameters, UmlFsm, UmlFsmBuilder},
+    fsm::{Action, Event, TransitionParameters, UmlFsm, UmlFsmBuilder},
     test::{FsmTestData, utils::get_adjacent_file_path},
 };
 
 fn build_deferred_events_fsm() -> Result<UmlFsm> {
     let mut builder = UmlFsmBuilder::new("DeferredEvents");
 
-    builder.add_state("StateA", StateType::Enter);
+    builder.add_enter_state("StateA");
     builder.add_enter_action("StateA", Action::from("EnterStateA"));
-    builder.add_state("StateB", StateType::Simple);
+    builder.add_state("StateB");
     builder.add_enter_action("StateB", Action::from("EnterStateB"));
-    builder.add_state("StateC", StateType::Simple);
+    builder.add_state("StateC");
     builder.add_enter_action("StateC", Action::from("EnterStateC"));
-    builder.add_state("StateD", StateType::Simple);
+    builder.add_state("StateD");
     builder.add_enter_action("StateD", Action::from("EnterStateD"));
 
     builder.add_deferred_event("StateA", Event::from("GoToA"));
@@ -79,11 +79,11 @@ fn build_deferred_events_fsm() -> Result<UmlFsm> {
     });
 
     // Composite StateE with substate StateF
-    let state_e = builder.add_state("StateE", StateType::Simple);
+    let state_e = builder.add_state("StateE");
     builder.add_deferred_event("StateE", Event::from("GoToA"));
 
     builder.set_scope(Some(state_e));
-    builder.add_state("StateF", StateType::Simple);
+    builder.add_state("StateF");
     builder.set_scope(None);
 
     // StateF -> StateB on GoToBFromF

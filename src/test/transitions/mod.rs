@@ -1,12 +1,12 @@
 use crate::{
     error::Result,
-    fsm::{Action, Event, StateType, TransitionParameters, UmlFsm, UmlFsmBuilder},
+    fsm::{Action, Event, TransitionParameters, UmlFsm, UmlFsmBuilder},
     test::{FsmTestData, utils::get_adjacent_file_path},
 };
 
 fn build_internal_transitions_fsm() -> Result<UmlFsm> {
     let mut builder = UmlFsmBuilder::new("InternalTransitions");
-    builder.add_state("StateA", StateType::Enter);
+    builder.add_enter_state("StateA");
     builder.add_enter_action("StateA", Action::from("EnterStateA"));
     builder.add_exit_action("StateA", Action::from("ExitStateA"));
 
@@ -37,12 +37,12 @@ fn build_internal_transitions_fsm() -> Result<UmlFsm> {
     });
 
     // Composite StateB
-    let state_b = builder.add_state("StateB", StateType::Simple);
+    let state_b = builder.add_state("StateB");
     builder.add_enter_action("StateB", Action::from("EnterStateB"));
     builder.add_exit_action("StateB", Action::from("ExitStateB"));
 
     builder.set_scope(Some(state_b));
-    builder.add_state("StateBA", StateType::Enter);
+    builder.add_enter_state("StateBA");
 
     // Internal transition on StateBA
     builder.add_transition(TransitionParameters {
@@ -67,7 +67,7 @@ fn build_internal_transitions_fsm() -> Result<UmlFsm> {
 
 fn build_guards_fsm() -> Result<UmlFsm> {
     let mut builder = UmlFsmBuilder::new("Guards");
-    builder.add_state("StateA", StateType::Enter);
+    builder.add_enter_state("StateA");
 
     // Root level guarded transitions
     builder.add_transition(TransitionParameters {
@@ -93,7 +93,7 @@ fn build_guards_fsm() -> Result<UmlFsm> {
     });
 
     // Composite StateC
-    let state_c = builder.add_state("StateC", StateType::Simple);
+    let state_c = builder.add_state("StateC");
     builder.set_scope(Some(state_c));
     builder.add_transition(TransitionParameters {
         source: "StateC",
@@ -115,7 +115,7 @@ fn build_guards_fsm() -> Result<UmlFsm> {
 
 fn build_transitions_fsm() -> Result<UmlFsm> {
     let mut builder = UmlFsmBuilder::new("TestFsm");
-    builder.add_state("StateA", StateType::Enter);
+    builder.add_enter_state("StateA");
     builder.add_transition(TransitionParameters {
         source: "StateA",
         target: Some("StateA"),
@@ -164,7 +164,7 @@ fn build_transitions_fsm() -> Result<UmlFsm> {
 
 fn build_direct_transitions_fsm() -> Result<UmlFsm> {
     let mut builder = UmlFsmBuilder::new("DirectTransitions");
-    builder.add_state("StateA", StateType::Enter);
+    builder.add_enter_state("StateA");
 
     // Direct transition: no event, just action
     builder.add_transition(TransitionParameters {

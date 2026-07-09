@@ -38,6 +38,9 @@ pub enum TransitionKind<S, E, A> {
         action: Option<A>,
         guard: Option<A>,
     },
+    /// `[*] --> target`: the scope's initial pseudo-transition. Owned by `target`,
+    /// which marks it as the state entered when its scope becomes active.
+    Enter { target: S },
 }
 
 /// Arena-stored transition: owns its event/action and refers to states by id.
@@ -52,6 +55,7 @@ impl TransitionData {
             TransitionData::Event { source, .. }
             | TransitionData::Internal { source, .. }
             | TransitionData::Direct { source, .. } => *source,
+            TransitionData::Enter { target } => *target,
         }
     }
 
@@ -60,7 +64,7 @@ impl TransitionData {
             TransitionData::Event { event, .. } | TransitionData::Internal { event, .. } => {
                 Some(event)
             }
-            TransitionData::Direct { .. } => None,
+            TransitionData::Direct { .. } | TransitionData::Enter { .. } => None,
         }
     }
 
@@ -69,6 +73,7 @@ impl TransitionData {
             TransitionData::Event { action, .. }
             | TransitionData::Internal { action, .. }
             | TransitionData::Direct { action, .. } => action.as_ref(),
+            TransitionData::Enter { .. } => None,
         }
     }
 
@@ -77,6 +82,7 @@ impl TransitionData {
             TransitionData::Event { guard, .. }
             | TransitionData::Internal { guard, .. }
             | TransitionData::Direct { guard, .. } => guard.as_ref(),
+            TransitionData::Enter { .. } => None,
         }
     }
 }
@@ -122,6 +128,9 @@ impl<'a> Transition<'a> {
                 action: action.as_ref(),
                 guard: guard.as_ref(),
             },
+            TransitionData::Enter { target } => Transition::Enter {
+                target: State::new(*target, arena),
+            },
         }
     }
 
@@ -130,13 +139,14 @@ impl<'a> Transition<'a> {
             Transition::Event { source, .. }
             | Transition::Internal { source, .. }
             | Transition::Direct { source, .. } => *source,
+            Transition::Enter { target } => *target,
         }
     }
 
     pub fn event(&self) -> Option<&'a Event> {
         match self {
             Transition::Event { event, .. } | Transition::Internal { event, .. } => Some(event),
-            Transition::Direct { .. } => None,
+            Transition::Direct { .. } | Transition::Enter { .. } => None,
         }
     }
 
@@ -144,7 +154,7 @@ impl<'a> Transition<'a> {
     pub fn destination(&self) -> Option<State<'a>> {
         match self {
             Transition::Event { target, .. } | Transition::Direct { target, .. } => Some(*target),
-            Transition::Internal { .. } => None,
+            Transition::Internal { .. } | Transition::Enter { .. } => None,
         }
     }
 
@@ -153,6 +163,7 @@ impl<'a> Transition<'a> {
             Transition::Event { action, .. }
             | Transition::Internal { action, .. }
             | Transition::Direct { action, .. } => *action,
+            Transition::Enter { .. } => None,
         }
     }
 
@@ -161,6 +172,7 @@ impl<'a> Transition<'a> {
             Transition::Event { guard, .. }
             | Transition::Internal { guard, .. }
             | Transition::Direct { guard, .. } => *guard,
+            Transition::Enter { .. } => None,
         }
     }
 }

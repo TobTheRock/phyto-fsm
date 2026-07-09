@@ -1,6 +1,6 @@
 use crate::{
     error::Result,
-    fsm::{Action, Event, StateType, TransitionParameters, UmlFsm, UmlFsmBuilder},
+    fsm::{Action, Event, TransitionParameters, UmlFsm, UmlFsmBuilder},
     test::{FsmTestData, utils::get_adjacent_file_path},
 };
 
@@ -8,8 +8,8 @@ fn build_composite_states_fsm() -> Result<UmlFsm> {
     let mut builder = UmlFsmBuilder::new("Composite States");
 
     // Root level
-    let state_a = builder.add_state("StateA", StateType::Enter);
-    builder.add_state("StateB", StateType::Simple);
+    let state_a = builder.add_enter_state("StateA");
+    builder.add_state("StateB");
     builder.add_transition(TransitionParameters {
         source: "StateA",
         target: Some("StateB"),
@@ -20,8 +20,8 @@ fn build_composite_states_fsm() -> Result<UmlFsm> {
 
     // StateA children
     builder.set_scope(Some(state_a));
-    let state_aa = builder.add_state("StateAA", StateType::Enter);
-    builder.add_state("StateAB", StateType::Simple);
+    let state_aa = builder.add_enter_state("StateAA");
+    builder.add_state("StateAB");
     builder.add_transition(TransitionParameters {
         source: "StateAA",
         target: Some("StateAB"),
@@ -31,8 +31,8 @@ fn build_composite_states_fsm() -> Result<UmlFsm> {
     });
     // StateAA children
     builder.set_scope(Some(state_aa));
-    builder.add_state("StateAAA", StateType::Enter);
-    builder.add_state("StateAAB", StateType::Simple);
+    builder.add_enter_state("StateAAA");
+    builder.add_state("StateAAB");
     builder.add_transition(TransitionParameters {
         source: "StateAAA",
         target: Some("StateAAB"),
@@ -48,17 +48,17 @@ fn build_substate_to_substate_fsm() -> Result<UmlFsm> {
     let mut builder = UmlFsmBuilder::new("Substate To Substate");
 
     // Root level
-    let state_a = builder.add_state("StateA", StateType::Enter);
-    let state_b = builder.add_state("StateB", StateType::Simple);
+    let state_a = builder.add_enter_state("StateA");
+    let state_b = builder.add_state("StateB");
 
     // StateA's children
     builder.set_scope(Some(state_a));
-    builder.add_state("StateAA", StateType::Enter);
+    builder.add_enter_state("StateAA");
 
     // StateB's children
     builder.set_scope(Some(state_b));
-    builder.add_state("StateBA", StateType::Simple);
-    builder.add_state("StateBB", StateType::Simple);
+    builder.add_state("StateBA");
+    builder.add_state("StateBB");
     builder.add_transition(TransitionParameters {
         source: "StateBA",
         target: Some("StateBB"),
@@ -84,8 +84,8 @@ fn build_same_name_substates_fsm() -> Result<UmlFsm> {
     let mut builder = UmlFsmBuilder::new("Same Name Substates");
 
     // Root level
-    let parent_a = builder.add_state("ParentA", StateType::Enter);
-    let parent_b = builder.add_state("ParentB", StateType::Simple);
+    let parent_a = builder.add_enter_state("ParentA");
+    let parent_b = builder.add_state("ParentB");
     builder.add_transition(TransitionParameters {
         source: "ParentA",
         target: Some("ParentB"),
@@ -96,8 +96,8 @@ fn build_same_name_substates_fsm() -> Result<UmlFsm> {
 
     // ParentA children
     builder.set_scope(Some(parent_a));
-    builder.add_state("Inner", StateType::Enter);
-    builder.add_state("Other", StateType::Simple);
+    builder.add_enter_state("Inner");
+    builder.add_state("Other");
     builder.add_transition(TransitionParameters {
         source: "Inner",
         target: Some("Other"),
@@ -108,8 +108,8 @@ fn build_same_name_substates_fsm() -> Result<UmlFsm> {
 
     // ParentB children
     builder.set_scope(Some(parent_b));
-    builder.add_state("Inner", StateType::Enter);
-    builder.add_state("Other", StateType::Simple);
+    builder.add_enter_state("Inner");
+    builder.add_state("Other");
     builder.add_transition(TransitionParameters {
         source: "Inner",
         target: Some("Other"),

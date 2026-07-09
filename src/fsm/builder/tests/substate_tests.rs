@@ -1,11 +1,11 @@
-use crate::fsm::{Event, State, StateType, TransitionParameters, UmlFsm, UmlFsmBuilder};
+use crate::fsm::{Event, State, TransitionParameters, UmlFsm, UmlFsmBuilder};
 
 use crate::fsm::model::StateId;
 
 #[test]
 fn add_substate() {
     let mut builder = builder_with_enter();
-    add_state_with_substate(&mut builder, "Parent", "Child", StateType::Simple);
+    add_state_with_substate(&mut builder, "Parent", "Child", false);
     let fsm = builder.build().unwrap();
 
     let parent = find_state(&fsm, "Parent");
@@ -13,15 +13,15 @@ fn add_substate() {
 
     let substate = parent.substates().next().unwrap();
     assert_eq!(substate.name(), "Child");
-    assert_eq!(substate.state_type(), StateType::Simple);
+    assert!(!substate.is_enter());
     assert_eq!(substate.parent().unwrap(), parent);
 }
 
 #[test]
 fn add_substate_same_name_different_parents() {
     let mut builder = builder_with_enter();
-    add_state_with_substate(&mut builder, "Parent1", "Child", StateType::Simple);
-    add_state_with_substate(&mut builder, "Parent2", "Child", StateType::Simple);
+    add_state_with_substate(&mut builder, "Parent1", "Child", false);
+    add_state_with_substate(&mut builder, "Parent2", "Child", false);
     let fsm = builder.build().unwrap();
 
     assert_n_times_state(&fsm, "Parent1", 1);
@@ -32,21 +32,21 @@ fn add_substate_same_name_different_parents() {
 #[test]
 fn add_substate_enter() {
     let mut builder = builder_with_enter();
-    add_state_with_substate(&mut builder, "Parent", "InitialChild", StateType::Enter);
+    add_state_with_substate(&mut builder, "Parent", "InitialChild", true);
     let fsm = builder.build().unwrap();
 
     let parent = find_state(&fsm, "Parent");
     let child = parent.substates().next().unwrap();
     assert_eq!(child.name(), "InitialChild");
-    assert_eq!(child.state_type(), StateType::Enter);
+    assert!(child.is_enter());
 }
 
 #[test]
 fn add_nested_substates() {
     let mut builder = builder_with_enter();
-    let (_, l2) = add_state_with_substate(&mut builder, "Level1", "Level2", StateType::Simple);
+    let (_, l2) = add_state_with_substate(&mut builder, "Level1", "Level2", false);
     builder.set_scope(Some(l2));
-    builder.add_state("Level3", StateType::Simple);
+    builder.add_state("Level3");
     let fsm = builder.build().unwrap();
 
     let level1 = find_state(&fsm, "Level1");
@@ -59,10 +59,10 @@ fn add_nested_substates() {
 #[test]
 fn add_substate_transition() {
     let mut builder = builder_with_enter();
-    let parent = builder.add_state("Parent", StateType::Simple);
+    let parent = builder.add_state("Parent");
     builder.set_scope(Some(parent));
-    builder.add_state("A", StateType::Enter);
-    builder.add_state("B", StateType::Simple);
+    builder.add_enter_state("A");
+    builder.add_state("B");
     builder.add_transition(TransitionParameters {
         source: "A",
         target: Some("B"),
@@ -82,12 +82,12 @@ fn add_substate_transition() {
 #[test]
 fn add_substate_transition_same_name_different_parents() {
     let mut builder = builder_with_enter();
-    let p1 = builder.add_state("Parent1", StateType::Simple);
-    let p2 = builder.add_state("Parent2", StateType::Simple);
+    let p1 = builder.add_state("Parent1");
+    let p2 = builder.add_state("Parent2");
 
     builder.set_scope(Some(p1));
-    builder.add_state("A", StateType::Enter);
-    builder.add_state("B", StateType::Simple);
+    builder.add_enter_state("A");
+    builder.add_state("B");
     builder.add_transition(TransitionParameters {
         source: "A",
         target: Some("B"),
@@ -97,8 +97,8 @@ fn add_substate_transition_same_name_different_parents() {
     });
 
     builder.set_scope(Some(p2));
-    builder.add_state("A", StateType::Enter);
-    builder.add_state("B", StateType::Simple);
+    builder.add_enter_state("A");
+    builder.add_state("B");
     builder.add_transition(TransitionParameters {
         source: "A",
         target: Some("B"),
@@ -127,7 +127,7 @@ fn add_substate_transition_same_name_different_parents() {
 #[test]
 fn add_substate_transition_creates_substates() {
     let mut builder = builder_with_enter();
-    let parent = builder.add_state("Parent", StateType::Simple);
+    let parent = builder.add_state("Parent");
     builder.set_scope(Some(parent));
     builder.add_transition(TransitionParameters {
         source: "A",
@@ -143,7 +143,7 @@ fn add_substate_transition_creates_substates() {
 
 fn builder_with_enter() -> UmlFsmBuilder {
     let mut builder = UmlFsmBuilder::new("TestFSM");
-    builder.add_state("Start", StateType::Enter);
+    builder.add_enter_state("Start");
     builder
 }
 
@@ -164,11 +164,15 @@ fn add_state_with_substate(
     builder: &mut UmlFsmBuilder,
     parent: &str,
     child: &str,
-    child_type: StateType,
+    child_enter: bool,
 ) -> (StateId, StateId) {
-    let parent_id = builder.add_state(parent, StateType::Simple);
+    let parent_id = builder.add_state(parent);
     builder.set_scope(Some(parent_id));
-    let child_id = builder.add_state(child, child_type);
+    let child_id = if child_enter {
+        builder.add_enter_state(child)
+    } else {
+        builder.add_state(child)
+    };
     builder.set_scope(None);
     (parent_id, child_id)
 }
