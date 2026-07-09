@@ -33,7 +33,7 @@ fn ancestor_transition_events(
     arena
         .ancestors(node_id)
         .flat_map(|id| arena[id].get().transitions.iter())
-        .filter_map(|t| t.event.as_ref())
+        .filter_map(|t| t.event())
 }
 
 fn ancestor_deferred_events(

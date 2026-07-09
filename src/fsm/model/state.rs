@@ -15,7 +15,7 @@ pub struct StateData {
     pub deferred_events: Vec<Event>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct State<'a> {
     id: StateId,
     arena: &'a indextree::Arena<StateData>,

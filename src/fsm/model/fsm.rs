@@ -154,9 +154,9 @@ fn transition_key(
     Option<Action>,
 ) {
     (
-        t.destination.map(|d| d.name().to_string()),
-        t.event.cloned(),
-        t.action.cloned(),
-        t.guard.cloned(),
+        t.destination().map(|d| d.name().to_string()),
+        t.event().cloned(),
+        t.action().cloned(),
+        t.guard().cloned(),
     )
 }

@@ -304,24 +304,23 @@ pub fn generate_state_impl(ctx: &GenerationContext) -> proc_macro2::TokenStream 
         let fn_name = state.function_ident();
 
         let transitions = state.transitions().filter_map(|t| {
-            let event_ident = t.event?.ident();
+            let event_ident = t.event()?.ident();
             let event_enum = &ctx.idents.event_enum;
             let next_state = t
-                .destination
-                .as_ref()
+                .destination()
                 .map(|d| {
                     let fn_ident = d.function_ident();
                     quote::quote! { Some(Self::#fn_ident()) }
                 })
                 .unwrap_or_else(|| quote::quote! { None });
-            let action = if let Some(a) = t.action {
+            let action = if let Some(a) = t.action() {
                 let action_ident = a.ident();
                 quote::quote! { action.#action_ident(params); }
             } else {
                 quote::quote! {}
             };
 
-            let guard_condition = if let Some(g) = t.guard {
+            let guard_condition = if let Some(g) = t.guard() {
                 let guard_ident = g.ident();
                 quote::quote! { if action.#guard_ident(&params) }
             } else {
@@ -568,29 +567,29 @@ fn log_level_token(level: log::Level) -> proc_macro2::TokenStream {
 fn generate_direct_transition(state: &crate::fsm::State<'_>) -> proc_macro2::TokenStream {
     let direct_transitions: Vec<_> = state
         .transitions()
-        .filter(|t| t.event.is_none() && t.destination.is_some())
+        .filter(|t| matches!(t, crate::fsm::Transition::Direct { .. }))
         .collect();
 
     if direct_transitions.is_empty() {
         return quote::quote! { |_action| None };
     }
 
-    let all_guarded = direct_transitions.iter().all(|t| t.guard.is_some());
+    let all_guarded = direct_transitions.iter().all(|t| t.guard().is_some());
 
     let branches: Vec<_> = direct_transitions
         .iter()
         .map(|t| {
-            let dest = t.destination.as_ref().unwrap();
+            let dest = t.destination().unwrap();
             let dest_fn = dest.function_ident();
 
-            let action = if let Some(a) = t.action {
+            let action = if let Some(a) = t.action() {
                 let action_ident = a.ident();
                 quote::quote! { action.#action_ident(); }
             } else {
                 quote::quote! {}
             };
 
-            if let Some(g) = t.guard {
+            if let Some(g) = t.guard() {
                 let guard_ident = g.ident();
                 quote::quote! {
                     if action.#guard_ident() {

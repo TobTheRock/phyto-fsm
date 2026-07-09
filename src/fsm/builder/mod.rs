@@ -77,12 +77,27 @@ impl UmlFsmBuilder {
         let from_id = self.find_or_create_state(source);
         let to_id = target.map(|t| self.find_or_create_state(t));
 
-        let transition = TransitionData {
-            source: from_id,
-            target: to_id,
-            event,
-            action,
-            guard,
+        let transition = match (event, to_id) {
+            (Some(event), Some(target)) => TransitionData::Event {
+                source: from_id,
+                event,
+                target,
+                action,
+                guard,
+            },
+            (Some(event), None) => TransitionData::Internal {
+                source: from_id,
+                event,
+                action,
+                guard,
+            },
+            (None, Some(target)) => TransitionData::Direct {
+                source: from_id,
+                target,
+                action,
+                guard,
+            },
+            (None, None) => panic!("transition from '{source}' has neither event nor target"),
         };
 
         self.arena[from_id].get_mut().transitions.push(transition);

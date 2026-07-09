@@ -1,16 +1,16 @@
 use itertools::Itertools;
 
-use crate::fsm::{Action, Event, UmlFsm};
+use crate::fsm::{Action, Event, Transition, UmlFsm};
 
 pub fn events(fsm: &UmlFsm) -> impl Iterator<Item = &Event> {
-    fsm.transitions().filter_map(|t| t.event).unique()
+    fsm.transitions().filter_map(|t| t.event()).unique()
 }
 
 pub fn actions(fsm: &UmlFsm) -> impl Iterator<Item = (&Action, &Event)> {
     fsm.transitions()
         .filter_map(|t| {
-            let event = t.event?;
-            t.action.map(|action| (action, event))
+            let event = t.event()?;
+            t.action().map(|action| (action, event))
         })
         .unique()
 }
@@ -18,23 +18,23 @@ pub fn actions(fsm: &UmlFsm) -> impl Iterator<Item = (&Action, &Event)> {
 pub fn guards(fsm: &UmlFsm) -> impl Iterator<Item = (&Action, &Event)> {
     fsm.transitions()
         .filter_map(|t| {
-            let event = t.event?;
-            t.guard.map(|guard| (guard, event))
+            let event = t.event()?;
+            t.guard().map(|guard| (guard, event))
         })
         .unique()
 }
 
 pub fn direct_transition_actions(fsm: &UmlFsm) -> impl Iterator<Item = &Action> {
     fsm.transitions()
-        .filter(|t| t.event.is_none())
-        .filter_map(|t| t.action)
+        .filter(|t| matches!(t, Transition::Direct { .. }))
+        .filter_map(|t| t.action())
         .unique()
 }
 
 pub fn direct_transition_guards(fsm: &UmlFsm) -> impl Iterator<Item = &Action> {
     fsm.transitions()
-        .filter(|t| t.event.is_none())
-        .filter_map(|t| t.guard)
+        .filter(|t| matches!(t, Transition::Direct { .. }))
+        .filter_map(|t| t.guard())
         .unique()
 }
 

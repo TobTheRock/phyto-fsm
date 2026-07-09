@@ -1,4 +1,46 @@
+use crate::fsm::model::transition::Transition;
 use crate::fsm::{Action, Event, StateType, TransitionParameters, UmlFsmBuilder};
+
+#[test]
+fn transitions_split_into_event_internal_and_direct_variants() {
+    let mut builder = UmlFsmBuilder::new("TestFSM");
+    builder.add_state("A", StateType::Enter);
+    // event transition: has event and target
+    builder.add_transition(TransitionParameters {
+        source: "A",
+        target: Some("B"),
+        event: Some("EV".into()),
+        action: None,
+        guard: None,
+    });
+    // internal transition: has event, no target
+    builder.add_transition(TransitionParameters {
+        source: "A",
+        target: None,
+        event: Some("INT".into()),
+        action: Some("act".into()),
+        guard: None,
+    });
+    // direct transition: has target, no event
+    builder.add_transition(TransitionParameters {
+        source: "B",
+        target: Some("C"),
+        event: None,
+        action: None,
+        guard: None,
+    });
+    let fsm = builder.build().unwrap();
+
+    let transitions: Vec<_> = fsm.transitions().collect();
+    assert!(matches!(
+        transitions.as_slice(),
+        [
+            Transition::Event { .. },
+            Transition::Internal { .. },
+            Transition::Direct { .. },
+        ]
+    ));
+}
 
 #[test]
 fn add_transition() {
@@ -16,9 +58,9 @@ fn add_transition() {
     assert_eq!(fsm.states().count(), 2);
     let transitions: Vec<_> = fsm.transitions().collect();
     assert_eq!(transitions.len(), 1);
-    assert_eq!(transitions[0].destination.as_ref().unwrap().name(), "B");
-    assert_eq!(transitions[0].event, Some(&Event::from("EventAB")));
-    assert_eq!(transitions[0].action, Some(&"ActionAB".into()));
+    assert_eq!(transitions[0].destination().unwrap().name(), "B");
+    assert_eq!(transitions[0].event(), Some(&Event::from("EventAB")));
+    assert_eq!(transitions[0].action(), Some(&"ActionAB".into()));
 }
 
 #[test]
@@ -71,7 +113,7 @@ fn add_transition_finds_existing_substate_from_root_scope() {
         .find(|s| s.name() == "Child")
         .unwrap();
     let t = child.transitions().next().unwrap();
-    assert_eq!(t.destination.as_ref().unwrap().name(), "Other");
+    assert_eq!(t.destination().unwrap().name(), "Other");
 }
 
 #[test]
@@ -89,9 +131,9 @@ fn add_direct_transition() {
 
     let transitions: Vec<_> = fsm.transitions().collect();
     assert_eq!(transitions.len(), 1);
-    assert_eq!(transitions[0].event, None);
-    assert_eq!(transitions[0].destination.as_ref().unwrap().name(), "B");
-    assert_eq!(transitions[0].action, Some(&Action::from("DoSomething")));
+    assert_eq!(transitions[0].event(), None);
+    assert_eq!(transitions[0].destination().unwrap().name(), "B");
+    assert_eq!(transitions[0].action(), Some(&Action::from("DoSomething")));
 }
 
 #[test]
@@ -116,5 +158,5 @@ fn add_guarded_direct_transitions() {
 
     let transitions: Vec<_> = fsm.transitions().collect();
     assert_eq!(transitions.len(), 2);
-    assert!(transitions.iter().all(|t| t.event.is_none()));
+    assert!(transitions.iter().all(|t| t.event().is_none()));
 }

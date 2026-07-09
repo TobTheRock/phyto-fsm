@@ -13,4 +13,6 @@ state StateC {
     StateC --> StateCB : ChangeState [CBGuard] / ActionToCB
 }
 
+' TODO test guards for direct transitions
+
 @enduml

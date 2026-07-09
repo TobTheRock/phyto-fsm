@@ -12,11 +12,11 @@ pub fn injective_action_mapping(arena: &ScopedArena<StateData>) -> Result<()> {
     let action_events = arena
         .iter()
         .flat_map(|node| node.get().transitions.iter())
-        .filter(|t| t.event.is_some())
-        .dedup_by(|a, b| (a.event == b.event) && (a.action == b.action))
+        .filter(|t| t.event().is_some())
+        .dedup_by(|a, b| (a.event() == b.event()) && (a.action() == b.action()))
         .filter_map(|t| {
-            let event = t.event.clone()?;
-            t.action.as_ref().map(|action| (action.clone(), event))
+            let event = t.event().cloned()?;
+            t.action().map(|action| (action.clone(), event))
         });
 
     action_events
@@ -68,7 +68,7 @@ fn for_each_transition_group(
     arena
         .iter()
         .flat_map(|node| node.get().transitions.iter())
-        .map(|t| (t.source, t.event.clone(), t.guard.clone()))
+        .map(|t| (t.source(), t.event().cloned(), t.guard().cloned()))
         .chunk_by(|(source, event, _)| (*source, event.clone()))
         .into_iter()
         .try_for_each(|((source, event), group)| {

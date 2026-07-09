@@ -75,8 +75,8 @@ fn add_substate_transition() {
     let parent_state = find_state(&fsm, "Parent");
     let a = parent_state.substates().find(|s| s.name() == "A").unwrap();
     let t = a.transitions().next().unwrap();
-    assert_eq!(t.destination.as_ref().unwrap().name(), "B");
-    assert_eq!(t.event, Some(&Event::from("E1")));
+    assert_eq!(t.destination().unwrap().name(), "B");
+    assert_eq!(t.event(), Some(&Event::from("E1")));
 }
 
 #[test]
@@ -115,11 +115,11 @@ fn add_substate_transition_same_name_different_parents() {
     let p2_a = parent2.substates().find(|s| s.name() == "A").unwrap();
 
     assert_eq!(
-        p1_a.transitions().next().unwrap().event,
+        p1_a.transitions().next().unwrap().event(),
         Some(&Event::from("E1"))
     );
     assert_eq!(
-        p2_a.transitions().next().unwrap().event,
+        p2_a.transitions().next().unwrap().event(),
         Some(&Event::from("E2"))
     );
 }
