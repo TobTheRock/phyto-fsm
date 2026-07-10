@@ -4,28 +4,26 @@ use crate::fsm::{Action, Event, TransitionParameters, UmlFsmBuilder};
 #[test]
 fn transitions_split_into_event_internal_and_direct_variants() {
     let mut builder = UmlFsmBuilder::new("TestFSM");
-    builder.add_enter_state("A");
+    builder.add_transition(TransitionParameters::Enter { target: "A" });
     // event transition: has event and target
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "A",
-        target: Some("B"),
-        event: Some("EV".into()),
+        target: "B",
+        event: "EV".into(),
         action: None,
         guard: None,
     });
     // internal transition: has event, no target
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Internal {
         source: "A",
-        target: None,
-        event: Some("INT".into()),
+        event: "INT".into(),
         action: Some("act".into()),
         guard: None,
     });
     // direct transition: has target, no event
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Direct {
         source: "B",
-        target: Some("C"),
-        event: None,
+        target: "C",
         action: None,
         guard: None,
     });
@@ -45,11 +43,11 @@ fn transitions_split_into_event_internal_and_direct_variants() {
 #[test]
 fn add_transition() {
     let mut builder = UmlFsmBuilder::new("TestFSM");
-    builder.add_enter_state("A");
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Enter { target: "A" });
+    builder.add_transition(TransitionParameters::Event {
         source: "A",
-        target: Some("B"),
-        event: Some("EventAB".into()),
+        target: "B",
+        event: "EventAB".into(),
         action: Some("ActionAB".into()),
         guard: None,
     });
@@ -66,11 +64,11 @@ fn add_transition() {
 #[test]
 fn add_transition_creates_states() {
     let mut builder = UmlFsmBuilder::new("TestFSM");
-    builder.add_enter_state("Start");
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Enter { target: "Start" });
+    builder.add_transition(TransitionParameters::Event {
         source: "A",
-        target: Some("B"),
-        event: Some("Event".into()),
+        target: "B",
+        event: "Event".into(),
         action: None,
         guard: None,
     });
@@ -85,17 +83,17 @@ fn add_transition_creates_states() {
 #[test]
 fn add_transition_finds_existing_substate_from_root_scope() {
     let mut builder = UmlFsmBuilder::new("TestFSM");
-    builder.add_enter_state("Start");
+    builder.add_transition(TransitionParameters::Enter { target: "Start" });
 
     let parent = builder.add_state("Parent");
     builder.set_scope(Some(parent));
     builder.add_state("Child");
 
     builder.set_scope(None);
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "Child",
-        target: Some("Other"),
-        event: Some("toOther".into()),
+        target: "Other",
+        event: "toOther".into(),
         action: None,
         guard: None,
     });
@@ -119,11 +117,10 @@ fn add_transition_finds_existing_substate_from_root_scope() {
 #[test]
 fn add_direct_transition() {
     let mut builder = UmlFsmBuilder::new("TestFSM");
-    builder.add_enter_state("A");
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Enter { target: "A" });
+    builder.add_transition(TransitionParameters::Direct {
         source: "A",
-        target: Some("B"),
-        event: None,
+        target: "B",
         action: Some("DoSomething".into()),
         guard: None,
     });
@@ -139,18 +136,16 @@ fn add_direct_transition() {
 #[test]
 fn add_guarded_direct_transitions() {
     let mut builder = UmlFsmBuilder::new("TestFSM");
-    builder.add_enter_state("A");
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Enter { target: "A" });
+    builder.add_transition(TransitionParameters::Direct {
         source: "A",
-        target: Some("B"),
-        event: None,
+        target: "B",
         action: Some("GoToB".into()),
         guard: Some("CanGoToB".into()),
     });
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Direct {
         source: "A",
-        target: Some("C"),
-        event: None,
+        target: "C",
         action: None,
         guard: Some("CanGoToC".into()),
     });

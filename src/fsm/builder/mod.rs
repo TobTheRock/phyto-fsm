@@ -54,61 +54,61 @@ impl UmlFsmBuilder {
             .unwrap_or_else(|| self.create_state(name))
     }
 
-    /// Marks `name` as the initial state of the current scope (`[*] --> name`),
-    /// creating it if needed. Idempotent — a state owns at most one `Enter` transition.
-    pub fn add_enter_state(&mut self, name: &str) -> StateId {
-        debug!("Adding enter state '{}'", name);
-        let id = self.add_state(name);
-        if !self.arena[id].get().is_enter() {
-            self.arena[id]
-                .get_mut()
-                .transitions
-                .push(TransitionData::Enter { target: id });
-        }
-        id
+    /// Records a transition, creating any referenced states. Returns the state the transition
+    /// is stored on (its source, or the target for an `Enter` pseudo-transition).
+    pub fn add_transition(&mut self, params: TransitionParameters) -> StateId {
+        debug!("Adding transition {:?}", params);
+        let transition = self.resolve_transition(params);
+        let owner = match transition {
+            TransitionData::Enter { target } => target,
+            _ => transition.source(),
+        };
+        self.arena[owner].get_mut().transitions.push(transition);
+        owner
     }
 
-    pub fn add_transition(&mut self, params: TransitionParameters) {
-        let TransitionParameters {
-            source,
-            target,
-            event,
-            action,
-            guard,
-        } = params;
-
-        debug!(
-            "Adding transition from {} -> {:?}: {:?} [{:?}] / {:?}",
-            source, target, event, guard, action
-        );
-
-        let from_id = self.find_or_create_state(source);
-        let to_id = target.map(|t| self.find_or_create_state(t));
-
-        let transition = match (event, to_id) {
-            (Some(event), Some(target)) => TransitionData::Event {
-                source: from_id,
+    /// Resolves endpoint names to arena ids, creating states as needed.
+    fn resolve_transition(&mut self, params: TransitionParameters) -> TransitionData {
+        match params {
+            TransitionParameters::Event {
+                source,
                 event,
                 target,
                 action,
                 guard,
+            } => TransitionData::Event {
+                source: self.find_or_create_state(source),
+                event,
+                target: self.find_or_create_state(target),
+                action,
+                guard,
             },
-            (Some(event), None) => TransitionData::Internal {
-                source: from_id,
+            TransitionParameters::Internal {
+                source,
+                event,
+                action,
+                guard,
+            } => TransitionData::Internal {
+                source: self.find_or_create_state(source),
                 event,
                 action,
                 guard,
             },
-            (None, Some(target)) => TransitionData::Direct {
-                source: from_id,
+            TransitionParameters::Direct {
+                source,
                 target,
                 action,
                 guard,
+            } => TransitionData::Direct {
+                source: self.find_or_create_state(source),
+                target: self.find_or_create_state(target),
+                action,
+                guard,
             },
-            (None, None) => panic!("transition from '{source}' has neither event nor target"),
-        };
-
-        self.arena[from_id].get_mut().transitions.push(transition);
+            TransitionParameters::Enter { target } => TransitionData::Enter {
+                target: self.find_or_create_state(target),
+            },
+        }
     }
 
     pub fn add_enter_action(&mut self, state_name: &str, action: Action) {
@@ -191,10 +191,7 @@ impl UmlFsmBuilder {
     }
 
     fn find_root_enter_state(&self) -> Result<StateId> {
-        let enter_states = self
-            .arena
-            .root_nodes()
-            .filter(|node| node.get().is_enter());
+        let enter_states = self.arena.root_nodes().filter(|node| node.get().is_enter());
         let enter_state_names = || enter_states.clone().map(|node| node.get().name.as_str());
 
         debug!("Root enter states: {:?}", enter_state_names().collect_vec());
@@ -236,5 +233,4 @@ impl UmlFsmBuilder {
             .find(|node| node.get().name == name)
             .and_then(|node| self.arena.get_node_id(node))
     }
-
 }

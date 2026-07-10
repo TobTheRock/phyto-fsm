@@ -45,7 +45,9 @@ fn add_fsm_elements(
     }
 
     for enter_state in &elements.enter_states {
-        builder.add_enter_state(enter_state);
+        builder.add_transition(TransitionParameters::Enter {
+            target: enter_state,
+        });
     }
     // Add transitions last, as they can create new states
     for transition in &elements.transitions {
@@ -57,16 +59,25 @@ fn add_fsm_elements(
             Some(label) => (label.events, label.action, label.guard),
             None => (Vec::new(), None, None),
         };
-        // An event list desugars to one transition per event; a direct transition
-        // (no events) still yields a single event-less transition.
+        // An event list desugars to one transition per event; with no events it is a single
+        // event-less (direct) transition.
         for event in events_or_none(events) {
-            builder.add_transition(TransitionParameters {
-                source: transition.source,
-                target: Some(transition.target),
-                event,
-                action: action.clone(),
-                guard: guard.clone(),
-            });
+            let params = match event {
+                Some(event) => TransitionParameters::Event {
+                    source: transition.source,
+                    target: transition.target,
+                    event,
+                    action: action.clone(),
+                    guard: guard.clone(),
+                },
+                None => TransitionParameters::Direct {
+                    source: transition.source,
+                    target: transition.target,
+                    action: action.clone(),
+                    guard: guard.clone(),
+                },
+            };
+            builder.add_transition(params);
         }
     }
 
@@ -82,10 +93,10 @@ fn add_fsm_elements(
                 builder.add_deferred_event(desc.name, event);
             }
             Ok(uml::StateDescription::InternalTransition(label)) => {
-                for event in events_or_none(label.events) {
-                    builder.add_transition(TransitionParameters {
+                // An internal transition always carries an event (`State : Event / action`).
+                for event in label.events {
+                    builder.add_transition(TransitionParameters::Internal {
                         source: desc.name,
-                        target: None,
                         event,
                         action: label.action.clone(),
                         guard: label.guard.clone(),

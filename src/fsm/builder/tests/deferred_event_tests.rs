@@ -5,7 +5,7 @@ use crate::fsm::{Event, TransitionParameters, UmlFsmBuilder};
 #[test]
 fn add_deferred_event_to_state() {
     let mut builder = UmlFsmBuilder::new("TestFSM");
-    builder.add_enter_state("Start");
+    builder.add_transition(TransitionParameters::Enter { target: "Start" });
     builder.add_deferred_event("Start", Event::from("MyEvent"));
     let fsm = builder.build().unwrap();
 
@@ -17,7 +17,7 @@ fn add_deferred_event_to_state() {
 #[test]
 fn state_without_deferred_events_returns_empty() {
     let mut builder = UmlFsmBuilder::new("TestFSM");
-    builder.add_enter_state("Start");
+    builder.add_transition(TransitionParameters::Enter { target: "Start" });
     let fsm = builder.build().unwrap();
 
     let start = fsm.states().find(|s| s.name() == "Start").unwrap();
@@ -27,7 +27,7 @@ fn state_without_deferred_events_returns_empty() {
 #[test]
 fn multiple_deferred_events_on_same_state() {
     let mut builder = UmlFsmBuilder::new("TestFSM");
-    builder.add_enter_state("Start");
+    builder.add_transition(TransitionParameters::Enter { target: "Start" });
     builder.add_deferred_event("Start", Event::from("EventA"));
     builder.add_deferred_event("Start", Event::from("EventB"));
     let fsm = builder.build().unwrap();
@@ -45,7 +45,9 @@ fn inherited_deferred_events() {
     let mut builder = UmlFsmBuilder::new("test");
     let parent_name = "Parent";
     let parent_defer: Event = "Defer1".into();
-    let parent = builder.add_enter_state(parent_name);
+    let parent = builder.add_transition(TransitionParameters::Enter {
+        target: parent_name,
+    });
     builder.add_deferred_event(parent_name, parent_defer.clone());
 
     builder.set_scope(Some(parent));
@@ -73,15 +75,15 @@ fn inherited_deferred_events() {
 #[test]
 fn child_transition_overrides_parent_deferred_event() {
     let mut builder = UmlFsmBuilder::new("test");
-    let parent = builder.add_enter_state("Parent");
+    let parent = builder.add_transition(TransitionParameters::Enter { target: "Parent" });
     builder.add_deferred_event("Parent", Event::from("Evt"));
 
     builder.set_scope(Some(parent));
     builder.add_state("Child");
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "Child",
-        target: Some("Parent"),
-        event: Some("Evt".into()),
+        target: "Parent",
+        event: "Evt".into(),
         action: None,
         guard: None,
     });
@@ -95,7 +97,9 @@ fn child_transition_overrides_parent_deferred_event() {
 #[test]
 fn multi_level_inheritance() {
     let mut builder = UmlFsmBuilder::new("test");
-    let grandparent = builder.add_enter_state("Grandparent");
+    let grandparent = builder.add_transition(TransitionParameters::Enter {
+        target: "Grandparent",
+    });
     builder.add_deferred_event("Grandparent", Event::from("Evt"));
 
     builder.set_scope(Some(grandparent));
@@ -126,16 +130,18 @@ fn multi_level_inheritance() {
 #[test]
 fn multi_level_override_breaks_chain() {
     let mut builder = UmlFsmBuilder::new("test");
-    let grandparent = builder.add_enter_state("Grandparent");
+    let grandparent = builder.add_transition(TransitionParameters::Enter {
+        target: "Grandparent",
+    });
     builder.add_deferred_event("Grandparent", Event::from("Evt"));
 
     builder.set_scope(Some(grandparent));
     let parent = builder.add_state("Parent");
     // Parent handles the event via transition, breaking inheritance
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "Parent",
-        target: Some("Grandparent"),
-        event: Some("Evt".into()),
+        target: "Grandparent",
+        event: "Evt".into(),
         action: None,
         guard: None,
     });
@@ -159,17 +165,17 @@ fn multi_level_override_breaks_chain() {
 #[test]
 fn partial_override_of_multiple_events() {
     let mut builder = UmlFsmBuilder::new("test");
-    let parent = builder.add_enter_state("Parent");
+    let parent = builder.add_transition(TransitionParameters::Enter { target: "Parent" });
     builder.add_deferred_event("Parent", Event::from("EvtA"));
     builder.add_deferred_event("Parent", Event::from("EvtB"));
 
     builder.set_scope(Some(parent));
     builder.add_state("Child");
     // Child handles EvtA, so only EvtB should be inherited
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "Child",
-        target: Some("Parent"),
-        event: Some("EvtA".into()),
+        target: "Parent",
+        event: "EvtA".into(),
         action: None,
         guard: None,
     });
@@ -186,7 +192,7 @@ fn partial_override_of_multiple_events() {
 #[test]
 fn no_duplicate_when_child_also_defers_same_event() {
     let mut builder = UmlFsmBuilder::new("test");
-    let parent = builder.add_enter_state("Parent");
+    let parent = builder.add_transition(TransitionParameters::Enter { target: "Parent" });
     builder.add_deferred_event("Parent", Event::from("Evt"));
 
     builder.set_scope(Some(parent));

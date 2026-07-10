@@ -6,32 +6,31 @@ use crate::{
 
 fn build_internal_transitions_fsm() -> Result<UmlFsm> {
     let mut builder = UmlFsmBuilder::new("InternalTransitions");
-    builder.add_enter_state("StateA");
+    builder.add_transition(TransitionParameters::Enter { target: "StateA" });
     builder.add_enter_action("StateA", Action::from("EnterStateA"));
     builder.add_exit_action("StateA", Action::from("ExitStateA"));
 
     // Internal transition (no target — stays in state, no exit/entry)
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Internal {
         source: "StateA",
-        target: None,
-        event: Some(Event("InternalEvent".into())),
+        event: Event("InternalEvent".into()),
         action: Some(Action("HandleInternalEvent".into())),
         guard: None,
     });
 
     // Self transition (target = source — triggers exit/entry)
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "StateA",
-        target: Some("StateA"),
-        event: Some(Event("SelfTransitionEvent".into())),
+        target: "StateA",
+        event: Event("SelfTransitionEvent".into()),
         action: Some(Action("HandleSelfTransitionEvent".into())),
         guard: None,
     });
 
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "StateA",
-        target: Some("StateB"),
-        event: Some(Event("GoToB".into())),
+        target: "StateB",
+        event: Event("GoToB".into()),
         action: None,
         guard: None,
     });
@@ -42,22 +41,21 @@ fn build_internal_transitions_fsm() -> Result<UmlFsm> {
     builder.add_exit_action("StateB", Action::from("ExitStateB"));
 
     builder.set_scope(Some(state_b));
-    builder.add_enter_state("StateBA");
+    builder.add_transition(TransitionParameters::Enter { target: "StateBA" });
 
     // Internal transition on StateBA
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Internal {
         source: "StateBA",
-        target: None,
-        event: Some(Event("InternalEvent".into())),
+        event: Event("InternalEvent".into()),
         action: Some(Action("HandleInternalEvent".into())),
         guard: None,
     });
 
     // Self transition on StateBA
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "StateBA",
-        target: Some("StateBA"),
-        event: Some(Event("SelfTransitionEvent".into())),
+        target: "StateBA",
+        event: Event("SelfTransitionEvent".into()),
         action: Some(Action("HandleSelfTransitionEvent".into())),
         guard: None,
     });
@@ -67,27 +65,27 @@ fn build_internal_transitions_fsm() -> Result<UmlFsm> {
 
 fn build_guards_fsm() -> Result<UmlFsm> {
     let mut builder = UmlFsmBuilder::new("Guards");
-    builder.add_enter_state("StateA");
+    builder.add_transition(TransitionParameters::Enter { target: "StateA" });
 
     // Root level guarded transitions
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "StateA",
-        target: Some("StateA"),
-        event: Some(Event("ChangeState".into())),
+        target: "StateA",
+        event: Event("ChangeState".into()),
         action: Some(Action("ActionToA".into())),
         guard: Some(Action("AGuard".into())),
     });
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "StateA",
-        target: Some("StateB"),
-        event: Some(Event("ChangeState".into())),
+        target: "StateB",
+        event: Event("ChangeState".into()),
         action: Some(Action("ActionToB".into())),
         guard: Some(Action("BGuard".into())),
     });
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "StateA",
-        target: Some("StateC"),
-        event: Some(Event("ChangeState".into())),
+        target: "StateC",
+        event: Event("ChangeState".into()),
         action: Some(Action("ActionToC".into())),
         guard: Some(Action("CGuard".into())),
     });
@@ -95,17 +93,17 @@ fn build_guards_fsm() -> Result<UmlFsm> {
     // Composite StateC
     let state_c = builder.add_state("StateC");
     builder.set_scope(Some(state_c));
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "StateC",
-        target: Some("StateCA"),
-        event: Some(Event("ChangeState".into())),
+        target: "StateCA",
+        event: Event("ChangeState".into()),
         action: Some(Action("ActionToCA".into())),
         guard: Some(Action("CAGuard".into())),
     });
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "StateC",
-        target: Some("StateCB"),
-        event: Some(Event("ChangeState".into())),
+        target: "StateCB",
+        event: Event("ChangeState".into()),
         action: Some(Action("ActionToCB".into())),
         guard: Some(Action("CBGuard".into())),
     });
@@ -115,47 +113,47 @@ fn build_guards_fsm() -> Result<UmlFsm> {
 
 fn build_transitions_fsm() -> Result<UmlFsm> {
     let mut builder = UmlFsmBuilder::new("TestFsm");
-    builder.add_enter_state("StateA");
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Enter { target: "StateA" });
+    builder.add_transition(TransitionParameters::Event {
         source: "StateA",
-        target: Some("StateA"),
-        event: Some(Event("SelfTransition".into())),
+        target: "StateA",
+        event: Event("SelfTransition".into()),
         action: Some(Action("HandleSelfTransition".into())),
         guard: None,
     });
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "StateA",
-        target: Some("StateB"),
-        event: Some(Event("GoToB".into())),
+        target: "StateB",
+        event: Event("GoToB".into()),
         action: Some(Action("HandleGoToB".into())),
         guard: None,
     });
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "StateA",
-        target: Some("StateB"),
-        event: Some(Event("GoToBDifferently".into())),
+        target: "StateB",
+        event: Event("GoToBDifferently".into()),
         action: Some(Action("HandleGoToBDifferently".into())),
         guard: None,
     });
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "StateA",
-        target: Some("StateC"),
-        event: Some(Event("GoToC".into())),
+        target: "StateC",
+        event: Event("GoToC".into()),
         action: None,
         guard: None,
     });
     // Event list: one label, multiple events -> one transition per event
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "StateB",
-        target: Some("StateA"),
-        event: Some(Event("GoToA".into())),
+        target: "StateA",
+        event: Event("GoToA".into()),
         action: None,
         guard: None,
     });
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "StateB",
-        target: Some("StateA"),
-        event: Some(Event("GoToADifferently".into())),
+        target: "StateA",
+        event: Event("GoToADifferently".into()),
         action: None,
         guard: None,
     });
@@ -164,38 +162,35 @@ fn build_transitions_fsm() -> Result<UmlFsm> {
 
 fn build_direct_transitions_fsm() -> Result<UmlFsm> {
     let mut builder = UmlFsmBuilder::new("DirectTransitions");
-    builder.add_enter_state("StateA");
+    builder.add_transition(TransitionParameters::Enter { target: "StateA" });
 
     // Direct transition: no event, just action
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Direct {
         source: "StateA",
-        target: Some("StateB"),
-        event: None,
+        target: "StateB",
         action: Some(Action("ActionToB".into())),
         guard: None,
     });
 
     // Direct transitions with guards
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Direct {
         source: "StateB",
-        target: Some("StateC"),
-        event: None,
+        target: "StateC",
         action: Some(Action("ActionToC".into())),
         guard: Some(Action("CanGoToC".into())),
     });
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Direct {
         source: "StateB",
-        target: Some("StateD"),
-        event: None,
+        target: "StateD",
         action: None,
         guard: Some(Action("CanGoToD".into())),
     });
 
     // Regular event-based transition
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "StateB",
-        target: Some("StateA"),
-        event: Some(Event("GoToA".into())),
+        target: "StateA",
+        event: Event("GoToA".into()),
         action: None,
         guard: None,
     });

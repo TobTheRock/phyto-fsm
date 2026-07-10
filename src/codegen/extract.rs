@@ -83,18 +83,17 @@ mod tests {
     #[test]
     fn direct_transitions_not_in_events() {
         let mut builder = UmlFsmBuilder::new("TestFSM");
-        builder.add_enter_state("A");
-        builder.add_transition(TransitionParameters {
+        builder.add_transition(TransitionParameters::Enter { target: "A" });
+        builder.add_transition(TransitionParameters::Direct {
             source: "A",
-            target: Some("B"),
-            event: None,
+            target: "B",
             action: Some("DoSomething".into()),
             guard: None,
         });
-        builder.add_transition(TransitionParameters {
+        builder.add_transition(TransitionParameters::Event {
             source: "B",
-            target: Some("A"),
-            event: Some("GoBack".into()),
+            target: "A",
+            event: "GoBack".into(),
             action: None,
             guard: None,
         });
@@ -108,18 +107,17 @@ mod tests {
     #[test]
     fn direct_transition_actions_separate_from_event_actions() {
         let mut builder = UmlFsmBuilder::new("TestFSM");
-        builder.add_enter_state("A");
-        builder.add_transition(TransitionParameters {
+        builder.add_transition(TransitionParameters::Enter { target: "A" });
+        builder.add_transition(TransitionParameters::Direct {
             source: "A",
-            target: Some("B"),
-            event: None,
+            target: "B",
             action: Some("DirectAction".into()),
             guard: None,
         });
-        builder.add_transition(TransitionParameters {
+        builder.add_transition(TransitionParameters::Event {
             source: "B",
-            target: Some("A"),
-            event: Some("GoBack".into()),
+            target: "A",
+            event: "GoBack".into(),
             action: Some("EventAction".into()),
             guard: None,
         });
@@ -137,23 +135,23 @@ mod tests {
     #[test]
     fn enter_actions_group_states_sharing_one_action() {
         let mut builder = UmlFsmBuilder::new("TestFSM");
-        builder.add_enter_state("A");
+        builder.add_transition(TransitionParameters::Enter { target: "A" });
         builder.add_enter_action("A", "OnEnter".into());
         builder.add_state("B");
         builder.add_enter_action("B", "OnEnter".into());
         builder.add_state("C");
         builder.add_enter_action("C", "OnlyC".into());
-        builder.add_transition(TransitionParameters {
+        builder.add_transition(TransitionParameters::Event {
             source: "A",
-            target: Some("B"),
-            event: Some("Go".into()),
+            target: "B",
+            event: "Go".into(),
             action: None,
             guard: None,
         });
-        builder.add_transition(TransitionParameters {
+        builder.add_transition(TransitionParameters::Event {
             source: "B",
-            target: Some("C"),
-            event: Some("Go".into()),
+            target: "C",
+            event: "Go".into(),
             action: None,
             guard: None,
         });
@@ -178,18 +176,17 @@ mod tests {
     #[test]
     fn direct_transition_guards_separate_from_event_guards() {
         let mut builder = UmlFsmBuilder::new("TestFSM");
-        builder.add_enter_state("A");
-        builder.add_transition(TransitionParameters {
+        builder.add_transition(TransitionParameters::Enter { target: "A" });
+        builder.add_transition(TransitionParameters::Direct {
             source: "A",
-            target: Some("B"),
-            event: None,
+            target: "B",
             action: None,
             guard: Some("DirectGuard".into()),
         });
-        builder.add_transition(TransitionParameters {
+        builder.add_transition(TransitionParameters::Event {
             source: "A",
-            target: Some("C"),
-            event: Some("GoToC".into()),
+            target: "C",
+            event: "GoToC".into(),
             action: None,
             guard: Some("EventGuard".into()),
         });

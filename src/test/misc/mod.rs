@@ -6,25 +6,25 @@ use crate::{
 
 fn build_internal_names_fsm() -> Result<UmlFsm> {
     let mut builder = UmlFsmBuilder::new("InternalNames");
-    builder.add_enter_state("StateA");
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Enter { target: "StateA" });
+    builder.add_transition(TransitionParameters::Event {
         source: "StateA",
-        target: Some("StateB"),
-        event: Some(Event("TriggerEvent".into())),
+        target: "StateB",
+        event: Event("TriggerEvent".into()),
         action: None,
         guard: None,
     });
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "StateA",
-        target: Some("StateB"),
-        event: Some(Event("ChangeState".into())),
+        target: "StateB",
+        event: Event("ChangeState".into()),
         action: None,
         guard: None,
     });
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "StateA",
-        target: Some("StateB"),
-        event: Some(Event("Start".into())),
+        target: "StateB",
+        event: Event("Start".into()),
         action: None,
         guard: None,
     });

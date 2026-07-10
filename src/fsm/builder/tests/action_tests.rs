@@ -15,10 +15,10 @@ fn set_state_enter_and_exit_actions() {
 #[test]
 fn set_actions_on_state_created_by_transition() {
     let mut builder = builder_with_enter();
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "Start",
-        target: Some("Other"),
-        event: Some("GoToOther".into()),
+        target: "Other",
+        event: "GoToOther".into(),
         action: None,
         guard: None,
     });
@@ -36,7 +36,7 @@ fn set_substate_actions() {
     let mut builder = builder_with_enter();
     let parent = builder.add_state("Parent");
     builder.set_scope(Some(parent));
-    builder.add_enter_state("Child");
+    builder.add_transition(TransitionParameters::Enter { target: "Child" });
     builder.add_enter_action("Child", Action::from("OnEnterChild"));
     builder.add_exit_action("Child", Action::from("OnExitChild"));
     let fsm = builder.build().unwrap();
@@ -52,7 +52,7 @@ fn set_substate_actions() {
 
 fn builder_with_enter() -> UmlFsmBuilder {
     let mut builder = UmlFsmBuilder::new("TestFSM");
-    builder.add_enter_state("Start");
+    builder.add_transition(TransitionParameters::Enter { target: "Start" });
     builder
 }
 

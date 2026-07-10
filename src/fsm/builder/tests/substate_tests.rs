@@ -61,12 +61,12 @@ fn add_substate_transition() {
     let mut builder = builder_with_enter();
     let parent = builder.add_state("Parent");
     builder.set_scope(Some(parent));
-    builder.add_enter_state("A");
+    builder.add_transition(TransitionParameters::Enter { target: "A" });
     builder.add_state("B");
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "A",
-        target: Some("B"),
-        event: Some("E1".into()),
+        target: "B",
+        event: "E1".into(),
         action: None,
         guard: None,
     });
@@ -86,23 +86,23 @@ fn add_substate_transition_same_name_different_parents() {
     let p2 = builder.add_state("Parent2");
 
     builder.set_scope(Some(p1));
-    builder.add_enter_state("A");
+    builder.add_transition(TransitionParameters::Enter { target: "A" });
     builder.add_state("B");
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "A",
-        target: Some("B"),
-        event: Some("E1".into()),
+        target: "B",
+        event: "E1".into(),
         action: None,
         guard: None,
     });
 
     builder.set_scope(Some(p2));
-    builder.add_enter_state("A");
+    builder.add_transition(TransitionParameters::Enter { target: "A" });
     builder.add_state("B");
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "A",
-        target: Some("B"),
-        event: Some("E2".into()),
+        target: "B",
+        event: "E2".into(),
         action: None,
         guard: None,
     });
@@ -129,10 +129,10 @@ fn add_substate_transition_creates_substates() {
     let mut builder = builder_with_enter();
     let parent = builder.add_state("Parent");
     builder.set_scope(Some(parent));
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "A",
-        target: Some("B"),
-        event: Some("E1".into()),
+        target: "B",
+        event: "E1".into(),
         action: None,
         guard: None,
     });
@@ -143,7 +143,7 @@ fn add_substate_transition_creates_substates() {
 
 fn builder_with_enter() -> UmlFsmBuilder {
     let mut builder = UmlFsmBuilder::new("TestFSM");
-    builder.add_enter_state("Start");
+    builder.add_transition(TransitionParameters::Enter { target: "Start" });
     builder
 }
 
@@ -169,7 +169,7 @@ fn add_state_with_substate(
     let parent_id = builder.add_state(parent);
     builder.set_scope(Some(parent_id));
     let child_id = if child_enter {
-        builder.add_enter_state(child)
+        builder.add_transition(TransitionParameters::Enter { target: child })
     } else {
         builder.add_state(child)
     };

@@ -3,7 +3,7 @@ use crate::fsm::{State, TransitionParameters, UmlFsm, UmlFsmBuilder};
 #[test]
 fn add_state_creates_simple_state() {
     let mut builder = UmlFsmBuilder::new("TestFSM");
-    builder.add_enter_state("Start");
+    builder.add_transition(TransitionParameters::Enter { target: "Start" });
     builder.add_state("State1");
     let fsm = builder.build().unwrap();
 
@@ -15,11 +15,11 @@ fn add_state_creates_simple_state() {
 #[test]
 fn add_state_reuses_existing() {
     let mut builder = UmlFsmBuilder::new("TestFSM");
-    builder.add_enter_state("A");
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Enter { target: "A" });
+    builder.add_transition(TransitionParameters::Event {
         source: "A",
-        target: Some("B"),
-        event: Some("E1".into()),
+        target: "B",
+        event: "E1".into(),
         action: None,
         guard: None,
     });
@@ -32,7 +32,7 @@ fn add_state_reuses_existing() {
 #[test]
 fn enter_state_not_overwritten_by_simple() {
     let mut builder = UmlFsmBuilder::new("TestFSM");
-    builder.add_enter_state("Start");
+    builder.add_transition(TransitionParameters::Enter { target: "Start" });
     builder.add_state("Start");
     let fsm = builder.build().unwrap();
 
@@ -43,14 +43,14 @@ fn enter_state_not_overwritten_by_simple() {
 #[test]
 fn simple_state_upgraded_to_enter() {
     let mut builder = UmlFsmBuilder::new("TestFSM");
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "Start",
-        target: Some("B"),
-        event: Some("E1".into()),
+        target: "B",
+        event: "E1".into(),
         action: None,
         guard: None,
     });
-    builder.add_enter_state("Start");
+    builder.add_transition(TransitionParameters::Enter { target: "Start" });
     let fsm = builder.build().unwrap();
 
     let start = find_state(&fsm, "Start");

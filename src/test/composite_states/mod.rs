@@ -8,35 +8,35 @@ fn build_composite_states_fsm() -> Result<UmlFsm> {
     let mut builder = UmlFsmBuilder::new("Composite States");
 
     // Root level
-    let state_a = builder.add_enter_state("StateA");
+    let state_a = builder.add_transition(TransitionParameters::Enter { target: "StateA" });
     builder.add_state("StateB");
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "StateA",
-        target: Some("StateB"),
-        event: Some(Event("GoToB".into())),
+        target: "StateB",
+        event: Event("GoToB".into()),
         action: Some(Action("HandleGoToB".into())),
         guard: None,
     });
 
     // StateA children
     builder.set_scope(Some(state_a));
-    let state_aa = builder.add_enter_state("StateAA");
+    let state_aa = builder.add_transition(TransitionParameters::Enter { target: "StateAA" });
     builder.add_state("StateAB");
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "StateAA",
-        target: Some("StateAB"),
-        event: Some(Event("GoToAB".into())),
+        target: "StateAB",
+        event: Event("GoToAB".into()),
         action: Some(Action("HandleGoToAB".into())),
         guard: None,
     });
     // StateAA children
     builder.set_scope(Some(state_aa));
-    builder.add_enter_state("StateAAA");
+    builder.add_transition(TransitionParameters::Enter { target: "StateAAA" });
     builder.add_state("StateAAB");
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "StateAAA",
-        target: Some("StateAAB"),
-        event: Some(Event("GoToAAB".into())),
+        target: "StateAAB",
+        event: Event("GoToAAB".into()),
         action: Some(Action("HandleGoToAAB".into())),
         guard: None,
     });
@@ -48,31 +48,31 @@ fn build_substate_to_substate_fsm() -> Result<UmlFsm> {
     let mut builder = UmlFsmBuilder::new("Substate To Substate");
 
     // Root level
-    let state_a = builder.add_enter_state("StateA");
+    let state_a = builder.add_transition(TransitionParameters::Enter { target: "StateA" });
     let state_b = builder.add_state("StateB");
 
     // StateA's children
     builder.set_scope(Some(state_a));
-    builder.add_enter_state("StateAA");
+    builder.add_transition(TransitionParameters::Enter { target: "StateAA" });
 
     // StateB's children
     builder.set_scope(Some(state_b));
     builder.add_state("StateBA");
     builder.add_state("StateBB");
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "StateBA",
-        target: Some("StateBB"),
-        event: Some(Event("GoToBB".into())),
+        target: "StateBB",
+        event: Event("GoToBB".into()),
         action: Some(Action("HandleGoToBB".into())),
         guard: None,
     });
 
     // Substate to substate transition (defined at root level but references substates)
     builder.set_scope(None);
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "StateAA",
-        target: Some("StateBA"),
-        event: Some(Event("GoToBA".into())),
+        target: "StateBA",
+        event: Event("GoToBA".into()),
         action: Some(Action("HandleGoToBA".into())),
         guard: None,
     });
@@ -84,36 +84,36 @@ fn build_same_name_substates_fsm() -> Result<UmlFsm> {
     let mut builder = UmlFsmBuilder::new("Same Name Substates");
 
     // Root level
-    let parent_a = builder.add_enter_state("ParentA");
+    let parent_a = builder.add_transition(TransitionParameters::Enter { target: "ParentA" });
     let parent_b = builder.add_state("ParentB");
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "ParentA",
-        target: Some("ParentB"),
-        event: Some(Event("GoToParentB".into())),
+        target: "ParentB",
+        event: Event("GoToParentB".into()),
         action: None,
         guard: None,
     });
 
     // ParentA children
     builder.set_scope(Some(parent_a));
-    builder.add_enter_state("Inner");
+    builder.add_transition(TransitionParameters::Enter { target: "Inner" });
     builder.add_state("Other");
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "Inner",
-        target: Some("Other"),
-        event: Some(Event("GoToOther".into())),
+        target: "Other",
+        event: Event("GoToOther".into()),
         action: None,
         guard: None,
     });
 
     // ParentB children
     builder.set_scope(Some(parent_b));
-    builder.add_enter_state("Inner");
+    builder.add_transition(TransitionParameters::Enter { target: "Inner" });
     builder.add_state("Other");
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "Inner",
-        target: Some("Other"),
-        event: Some(Event("GoToOther".into())),
+        target: "Other",
+        event: Event("GoToOther".into()),
         action: None,
         guard: None,
     });

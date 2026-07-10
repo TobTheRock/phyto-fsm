@@ -3,17 +3,6 @@ use crate::fsm::types::{Action, Event};
 use super::StateId;
 use super::state::{State, StateData};
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TransitionParameters<'a> {
-    pub source: &'a str,
-    /// No target indicates an internal transition
-    pub target: Option<&'a str>,
-    /// No event indicates a direct transition
-    pub event: Option<Event>,
-    pub action: Option<Action>,
-    pub guard: Option<Action>,
-}
-
 #[derive(Debug, Clone)]
 pub enum TransitionKind<S, E, A> {
     /// `S -- event [guard] / action --> target`: runs exit(S) + enter(target).
@@ -42,6 +31,10 @@ pub enum TransitionKind<S, E, A> {
     /// which marks it as the state entered when its scope becomes active.
     Enter { target: S },
 }
+
+/// Source-level transition input: endpoints are state *names*, resolved to ids by the builder.
+/// One value per transition kind — the builder no longer classifies from optional fields.
+pub type TransitionParameters<'a> = TransitionKind<&'a str, Event, Action>;
 
 /// Arena-stored transition: owns its event/action and refers to states by id.
 pub type TransitionData = TransitionKind<StateId, Event, Action>;

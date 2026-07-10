@@ -67,8 +67,7 @@ impl UmlFsm {
     fn enter_states_eq(&self, other: &Self) -> bool {
         let self_enter = self.enter_state();
         let other_enter = other.enter_state();
-        self_enter.name() == other_enter.name()
-            && self_enter.is_enter() == other_enter.is_enter()
+        self_enter.name() == other_enter.name() && self_enter.is_enter() == other_enter.is_enter()
     }
 
     fn states_eq(&self, other: &Self) -> bool {

@@ -7,7 +7,7 @@ use crate::{
 fn build_deferred_events_fsm() -> Result<UmlFsm> {
     let mut builder = UmlFsmBuilder::new("DeferredEvents");
 
-    builder.add_enter_state("StateA");
+    builder.add_transition(TransitionParameters::Enter { target: "StateA" });
     builder.add_enter_action("StateA", Action::from("EnterStateA"));
     builder.add_state("StateB");
     builder.add_enter_action("StateB", Action::from("EnterStateB"));
@@ -18,62 +18,61 @@ fn build_deferred_events_fsm() -> Result<UmlFsm> {
 
     builder.add_deferred_event("StateA", Event::from("GoToA"));
 
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "StateA",
-        target: Some("StateB"),
-        event: Some(Event("GoToB".into())),
+        target: "StateB",
+        event: Event("GoToB".into()),
         action: None,
         guard: None,
     });
 
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "StateA",
-        target: Some("StateC"),
-        event: Some(Event("GoToC".into())),
+        target: "StateC",
+        event: Event("GoToC".into()),
         action: None,
         guard: None,
     });
 
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "StateA",
-        target: Some("StateD"),
-        event: Some(Event("GoToD".into())),
+        target: "StateD",
+        event: Event("GoToD".into()),
         action: None,
         guard: None,
     });
 
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "StateB",
-        target: Some("StateA"),
-        event: Some(Event("GoToA".into())),
+        target: "StateA",
+        event: Event("GoToA".into()),
         action: None,
         guard: None,
     });
 
     builder.add_deferred_event("StateC", Event::from("GoToA"));
 
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "StateC",
-        target: Some("StateB"),
-        event: Some(Event("GoToBFromC".into())),
+        target: "StateB",
+        event: Event("GoToBFromC".into()),
         action: None,
         guard: None,
     });
 
     builder.add_deferred_event("StateD", Event::from("GoToA"));
 
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Direct {
         source: "StateD",
-        target: Some("StateB"),
-        event: None,
+        target: "StateB",
         action: None,
         guard: None,
     });
 
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "StateA",
-        target: Some("StateF"),
-        event: Some("GoToF".into()),
+        target: "StateF",
+        event: "GoToF".into(),
         action: None,
         guard: None,
     });
@@ -87,10 +86,10 @@ fn build_deferred_events_fsm() -> Result<UmlFsm> {
     builder.set_scope(None);
 
     // StateF -> StateB on GoToBFromF
-    builder.add_transition(TransitionParameters {
+    builder.add_transition(TransitionParameters::Event {
         source: "StateF",
-        target: Some("StateB"),
-        event: Some(Event("GoToBFromF".into())),
+        target: "StateB",
+        event: Event("GoToBFromF".into()),
         action: None,
         guard: None,
     });
