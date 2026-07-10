@@ -8,6 +8,17 @@ use super::error::BuildError;
 use super::scoped_arena::ScopedArena;
 use crate::fsm::model::{StateData, TransitionData};
 
+/// Exactly one top-level state must be an enter state (`[*] -->`), i.e. the FSM's initial state.
+pub fn single_root_enter(arena: &ScopedArena<StateData>) -> Result<()> {
+    let enter_states = arena.root_nodes().filter(|node| node.get().is_enter());
+    enter_states.clone().exactly_one().map(|_| ()).map_err(|_| {
+        let names: String =
+            Itertools::intersperse(enter_states.map(|node| node.get().name.as_str()), ", ")
+                .collect();
+        BuildError::InvalidEnterStates(names).into()
+    })
+}
+
 pub fn injective_action_mapping(arena: &ScopedArena<StateData>) -> Result<()> {
     let action_events = arena
         .iter()

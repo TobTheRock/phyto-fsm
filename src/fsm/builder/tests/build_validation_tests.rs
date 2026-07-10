@@ -8,6 +8,17 @@ fn build_without_enter_state_fails() {
 }
 
 #[test]
+fn build_with_multiple_enter_states_fails() {
+    let mut builder = UmlFsmBuilder::new("TestFSM");
+    builder.add_transition(TransitionParameters::Enter { target: "Start" });
+    builder.add_transition(TransitionParameters::Enter {
+        target: "AnotherStart",
+    });
+    let result = builder.build();
+    assert!(result.is_err());
+}
+
+#[test]
 fn build_with_empty_name_fails() {
     let mut builder = UmlFsmBuilder::new("  ");
     builder.add_transition(TransitionParameters::Enter { target: "Start" });

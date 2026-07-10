@@ -2,32 +2,32 @@ use std::collections::HashSet;
 
 use crate::fsm::types::{Action, Event};
 
-use super::StateId;
 use super::state::{State, StateData};
 use super::transition::Transition;
 
 #[derive(Clone)]
 pub struct UmlFsm {
     name: String,
-    enter_state: StateId,
     arena: indextree::Arena<StateData>,
 }
 
 impl UmlFsm {
-    pub fn new(name: String, enter_state: StateId, arena: indextree::Arena<StateData>) -> Self {
-        Self {
-            name,
-            enter_state,
-            arena,
-        }
+    pub fn new(name: String, arena: indextree::Arena<StateData>) -> Self {
+        Self { name, arena }
     }
 
     pub fn name(&self) -> &str {
         &self.name
     }
 
+    /// The state the machine starts in: the top-level `[*] -->` target resolved down to its
+    /// deepest nested initial substate. Exactly one top-level enter state is guaranteed by the
+    /// builder's `single_root_enter` validation.
     pub fn enter_state(&self) -> State<'_> {
-        State::new(self.enter_state, &self.arena)
+        self.states()
+            .find(|state| state.parent().is_none() && state.is_enter())
+            .expect("builder validated a single top-level enter state")
+            .enter_state()
     }
 
     pub fn states(&self) -> impl Iterator<Item = State<'_>> {

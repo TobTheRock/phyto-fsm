@@ -9,7 +9,6 @@ pub struct StateData {
     pub transitions: Vec<super::TransitionData>,
     pub enter_action: Option<Action>,
     pub exit_action: Option<Action>,
-    pub enter_state: Option<StateId>,
     /// Includes the inherited events from potential parents
     pub deferred_events: Vec<Event>,
 }
@@ -78,12 +77,12 @@ impl<'a> State<'a> {
             .map(move |child_id| State::new(child_id, self.arena))
     }
 
+    /// The state entered when this state's scope becomes active: the deepest nested initial
+    /// substate (each composite descends into its `[*] -->` child), or `self` if it is a leaf.
     pub fn enter_state(&self) -> State<'a> {
-        let data = self.node_data();
-        if let Some(enter_id) = data.enter_state {
-            State::new(enter_id, self.arena)
-        } else {
-            State::new(self.id, self.arena)
+        match self.substates().find(|s| s.is_enter()) {
+            Some(child) => child.enter_state(),
+            None => *self,
         }
     }
 

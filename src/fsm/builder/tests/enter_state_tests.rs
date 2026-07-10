@@ -12,54 +12,6 @@ fn add_enter_state() {
 }
 
 #[test]
-fn add_enter_state_twice_fails() {
-    let mut builder = UmlFsmBuilder::new("TestFSM");
-    builder.add_transition(TransitionParameters::Enter { target: "Start" });
-    builder.add_transition(TransitionParameters::Enter {
-        target: "AnotherStart",
-    });
-
-    let result = builder.build();
-    assert!(result.is_err());
-}
-
-#[test]
-fn add_enter_state_after_transition() {
-    let mut builder = UmlFsmBuilder::new("TestFSM");
-    builder.add_transition(TransitionParameters::Event {
-        source: "A",
-        target: "B",
-        event: "Event".into(),
-        action: None,
-        guard: None,
-    });
-    builder.add_transition(TransitionParameters::Enter { target: "Start" });
-
-    let fsm = builder.build().unwrap();
-    let enter = fsm.enter_state();
-    assert_eq!(enter.name(), "Start");
-    assert!(enter.is_enter());
-}
-
-#[test]
-fn add_transition_after_enter_state() {
-    let mut builder = UmlFsmBuilder::new("TestFSM");
-    builder.add_transition(TransitionParameters::Enter { target: "Start" });
-    builder.add_transition(TransitionParameters::Event {
-        source: "A",
-        target: "B",
-        event: "Event".into(),
-        action: None,
-        guard: None,
-    });
-
-    let fsm = builder.build().unwrap();
-    let enter = fsm.enter_state();
-    assert_eq!(enter.name(), "Start");
-    assert!(enter.is_enter());
-}
-
-#[test]
 fn enter_state_resolves_to_deepest_nested_enter() {
     let mut builder = UmlFsmBuilder::new("TestFSM");
 

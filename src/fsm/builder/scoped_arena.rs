@@ -89,11 +89,6 @@ impl<T> ScopedArena<T> {
         self.arena.get_node_id(node)
     }
 
-    /// Returns children of a node.
-    pub fn children(&self, node_id: NodeId) -> impl Iterator<Item = NodeId> + '_ {
-        node_id.children(&self.arena)
-    }
-
     /// Returns an iterator over all ancestors of a node
     pub fn ancestors(&self, node_id: NodeId) -> impl Iterator<Item = NodeId> + '_ {
         node_id.ancestors(&self.arena)

@@ -1,5 +1,3 @@
-use itertools::Itertools;
-
 use crate::debug::debug;
 use crate::error::Result;
 
@@ -24,7 +22,6 @@ impl StateData {
             transitions: vec![],
             enter_action: None,
             exit_action: None,
-            enter_state: None,
             deferred_events: vec![],
         }
     }
@@ -147,19 +144,16 @@ impl UmlFsmBuilder {
         validation::injective_action_mapping(&self.arena)?;
         validation::no_conflicting_transitions(&self.arena)?;
         validation::unique_guards_per_event(&self.arena)?;
+        validation::single_root_enter(&self.arena)?;
 
         inheritance::extract_deferred_events(&mut self.arena);
-        self.link_enter_states();
-
-        let enter_state = self.find_root_enter_state()?;
-        debug!("Found root enter state: {:?}", enter_state);
 
         let name = self.name;
         if name.trim().is_empty() {
             return Err(BuildError::EmptyName.into());
         }
 
-        Ok(UmlFsm::new(name, enter_state, self.arena.into_inner()))
+        Ok(UmlFsm::new(name, self.arena.into_inner()))
     }
 
     fn find_or_create_state(&mut self, name: &str) -> StateId {
@@ -175,49 +169,6 @@ impl UmlFsmBuilder {
         );
         let state_data = StateData::new(name);
         self.arena.new_node_in_scope(state_data)
-    }
-
-    fn link_enter_states(&mut self) {
-        let node_ids: Vec<_> = self
-            .arena
-            .iter()
-            .filter_map(|node| self.arena.get_node_id(node))
-            .collect();
-
-        for id in node_ids {
-            let deepest_enter = self.find_deepest_enter_state(id);
-            self.arena[id].get_mut().enter_state = Some(deepest_enter);
-        }
-    }
-
-    fn find_root_enter_state(&self) -> Result<StateId> {
-        let enter_states = self.arena.root_nodes().filter(|node| node.get().is_enter());
-        let enter_state_names = || enter_states.clone().map(|node| node.get().name.as_str());
-
-        debug!("Root enter states: {:?}", enter_state_names().collect_vec());
-
-        let root_enter = enter_states
-            .clone()
-            .filter_map(|node| self.arena.get_node_id(node))
-            .exactly_one()
-            .map_err(|_| {
-                let names: String = Itertools::intersperse(enter_state_names(), ", ").collect();
-                BuildError::InvalidEnterStates(names)
-            })?;
-
-        Ok(self.find_deepest_enter_state(root_enter))
-    }
-
-    fn find_deepest_enter_state(&self, state_id: StateId) -> StateId {
-        let mut current = state_id;
-        while let Some(nested_enter) = self
-            .arena
-            .children(current)
-            .find(|child| self.arena[*child].get().is_enter())
-        {
-            current = nested_enter;
-        }
-        current
     }
 
     fn find_state_in_scope(&self, name: &str) -> Option<StateId> {
