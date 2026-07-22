@@ -30,6 +30,15 @@ pub enum TransitionKind<S, E, A> {
     /// `[*] --> target`: the scope's initial pseudo-transition. Owned by `target`,
     /// which marks it as the state entered when its scope becomes active.
     Enter { target: S },
+    /// `S -- event [guard] / action --> [*]`: a transition to the `[*]` final pseudo-state.
+    /// Reaching it ends the enclosing region — the whole FSM at top level. `event: None` is a
+    /// completion (event-less) exit.
+    Final {
+        source: S,
+        event: Option<E>,
+        action: Option<A>,
+        guard: Option<A>,
+    },
 }
 
 /// Source-level transition input: endpoints are state *names*, resolved to ids by the builder.
@@ -47,7 +56,8 @@ impl TransitionData {
         match self {
             TransitionData::Event { source, .. }
             | TransitionData::Internal { source, .. }
-            | TransitionData::Direct { source, .. } => *source,
+            | TransitionData::Direct { source, .. }
+            | TransitionData::Final { source, .. } => *source,
             TransitionData::Enter { target } => *target,
         }
     }
@@ -57,6 +67,7 @@ impl TransitionData {
             TransitionData::Event { event, .. } | TransitionData::Internal { event, .. } => {
                 Some(event)
             }
+            TransitionData::Final { event, .. } => event.as_ref(),
             TransitionData::Direct { .. } | TransitionData::Enter { .. } => None,
         }
     }
@@ -65,7 +76,8 @@ impl TransitionData {
         match self {
             TransitionData::Event { action, .. }
             | TransitionData::Internal { action, .. }
-            | TransitionData::Direct { action, .. } => action.as_ref(),
+            | TransitionData::Direct { action, .. }
+            | TransitionData::Final { action, .. } => action.as_ref(),
             TransitionData::Enter { .. } => None,
         }
     }
@@ -74,7 +86,8 @@ impl TransitionData {
         match self {
             TransitionData::Event { guard, .. }
             | TransitionData::Internal { guard, .. }
-            | TransitionData::Direct { guard, .. } => guard.as_ref(),
+            | TransitionData::Direct { guard, .. }
+            | TransitionData::Final { guard, .. } => guard.as_ref(),
             TransitionData::Enter { .. } => None,
         }
     }
@@ -124,6 +137,17 @@ impl<'a> Transition<'a> {
             TransitionData::Enter { target } => Transition::Enter {
                 target: State::new(*target, arena),
             },
+            TransitionData::Final {
+                source,
+                event,
+                action,
+                guard,
+            } => Transition::Final {
+                source: State::new(*source, arena),
+                event: event.as_ref(),
+                action: action.as_ref(),
+                guard: guard.as_ref(),
+            },
         }
     }
 
@@ -131,7 +155,8 @@ impl<'a> Transition<'a> {
         match self {
             Transition::Event { source, .. }
             | Transition::Internal { source, .. }
-            | Transition::Direct { source, .. } => *source,
+            | Transition::Direct { source, .. }
+            | Transition::Final { source, .. } => *source,
             Transition::Enter { target } => *target,
         }
     }
@@ -139,15 +164,18 @@ impl<'a> Transition<'a> {
     pub fn event(&self) -> Option<&'a Event> {
         match self {
             Transition::Event { event, .. } | Transition::Internal { event, .. } => Some(event),
+            Transition::Final { event, .. } => *event,
             Transition::Direct { .. } | Transition::Enter { .. } => None,
         }
     }
 
-    /// `None` for internal transitions, which do not change state.
+    /// `None` for internal and final transitions, which have no target state.
     pub fn destination(&self) -> Option<State<'a>> {
         match self {
             Transition::Event { target, .. } | Transition::Direct { target, .. } => Some(*target),
-            Transition::Internal { .. } | Transition::Enter { .. } => None,
+            Transition::Internal { .. } | Transition::Enter { .. } | Transition::Final { .. } => {
+                None
+            }
         }
     }
 
@@ -155,7 +183,8 @@ impl<'a> Transition<'a> {
         match self {
             Transition::Event { action, .. }
             | Transition::Internal { action, .. }
-            | Transition::Direct { action, .. } => *action,
+            | Transition::Direct { action, .. }
+            | Transition::Final { action, .. } => *action,
             Transition::Enter { .. } => None,
         }
     }
@@ -164,7 +193,8 @@ impl<'a> Transition<'a> {
         match self {
             Transition::Event { guard, .. }
             | Transition::Internal { guard, .. }
-            | Transition::Direct { guard, .. } => *guard,
+            | Transition::Direct { guard, .. }
+            | Transition::Final { guard, .. } => *guard,
             Transition::Enter { .. } => None,
         }
     }
@@ -182,7 +212,10 @@ impl std::fmt::Display for Transition<'_> {
             .map(|a| format!(" / {}", a.0))
             .unwrap_or_default();
         let dest = self.destination();
-        let dest = dest.as_ref().map(|d| d.name()).unwrap_or("(internal)");
+        let dest = match self {
+            Transition::Final { .. } => "[*]",
+            _ => dest.as_ref().map(|d| d.name()).unwrap_or("(internal)"),
+        };
         write!(
             f,
             "{} --[{}{}{}]--> {}",

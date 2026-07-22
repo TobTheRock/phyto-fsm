@@ -119,13 +119,13 @@ impl std::fmt::Display for PlantFsmState {
 struct RealState<T: IPlantFsmActions> {
     id: PlantFsmState,
     // Transition based on an event, depending on the state
-    // Returns Some for external and self transitions
+    // Returns Some for external and self transitions (a real target or a pseudo-state)
     // Internal transitions will return None, same if the event is ignored
-    transition: fn(event: PlantFsmEvent<T>, actions: &mut T) -> Option<RealState<T>>,
+    transition: fn(event: PlantFsmEvent<T>, actions: &mut T) -> Option<PlantFsmStateNode<T>>,
     // Direct transitions, not based on an event
-    direct_transition: fn(actions: &mut T) -> Option<RealState<T>>,
+    direct_transition: fn(actions: &mut T) -> Option<PlantFsmStateNode<T>>,
     // state to enter when transitioned to, if there are no substates this is Self
-    enter_state: fn() -> RealState<T>,
+    enter_state: fn() -> PlantFsmStateNode<T>,
     // enter action, composite states check for internal transitions
     enter: fn(actions: &mut T, from: &PlantFsmStateNode<T>),
     // exit action, composite states check for internal transitions
@@ -156,10 +156,15 @@ impl<T: IPlantFsmActions> PartialEq for RealState<T> {
 // Internal state representation: real states plus pseudo-states (currently only the
 // implicit initial). Pseudo-states are kept here, off the public PlantFsmState enum,
 // because they are transient bookkeeping rather than user-observable rest states.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, derive_more::From)]
 enum PlantFsmStateNode<T: IPlantFsmActions> {
     Real(RealState<T>),
-    Initial { target: fn() -> RealState<T> },
+    #[from(skip)]
+    Initial {
+        target: fn() -> PlantFsmStateNode<T>,
+    },
+    #[from(skip)]
+    Exit(),
 }
 
 impl<T: IPlantFsmActions> std::fmt::Display for PlantFsmStateNode<T> {
@@ -167,6 +172,7 @@ impl<T: IPlantFsmActions> std::fmt::Display for PlantFsmStateNode<T> {
         match self {
             Self::Real(real) => write!(f, "{}", real.id),
             Self::Initial { .. } => write!(f, "[*]"),
+            Self::Exit() => write!(f, "[*]"),
         }
     }
 }
@@ -178,7 +184,7 @@ where
     // Hidden init pseudo-state to trigger enter actions when starting the FSM
     fn init() -> Self {
         Self::Initial {
-            target: RealState::<A>::winter_freezing,
+            target: Self::winter_freezing,
         }
     }
 
@@ -187,6 +193,7 @@ where
         match self {
             Self::Real(real) => Some(real.id),
             Self::Initial { .. } => None,
+            Self::Exit() => None,
         }
     }
 
@@ -194,8 +201,9 @@ where
     // delegate to their declared `enter_state`, the initial pseudo-state to its target.
     fn resolve_enter_state(&self) -> Self {
         match self {
-            Self::Real(real) => Self::Real((real.enter_state)()),
-            Self::Initial { target } => Self::Real(target()),
+            Self::Real(real) => (real.enter_state)(),
+            Self::Initial { target } => target(),
+            Self::Exit() => Self::Exit(),
         }
     }
 
@@ -203,20 +211,23 @@ where
         match self {
             Self::Real(real_state) => (real_state.defer_event)(event),
             Self::Initial { .. } => false,
+            Self::Exit() => false,
         }
     }
 
     fn transition(&self, event: PlantFsmEvent<A>, actions: &mut A) -> Option<Self> {
         match self {
-            Self::Real(real) => (real.transition)(event, actions).map(Self::Real),
+            Self::Real(real) => (real.transition)(event, actions),
             Self::Initial { .. } => None,
+            Self::Exit() => None,
         }
     }
 
     fn direct_transition(&self, actions: &mut A) -> Option<Self> {
         match self {
-            Self::Real(real) => (real.direct_transition)(actions).map(Self::Real),
-            Self::Initial { target } => Some(Self::Real(target())),
+            Self::Real(real) => (real.direct_transition)(actions),
+            Self::Initial { target } => Some(target()),
+            Self::Exit() => None,
         }
     }
 
@@ -224,6 +235,7 @@ where
         match self {
             Self::Real(real) => (real.enter)(actions, from),
             Self::Initial { .. } => {}
+            Self::Exit() => {}
         }
     }
 
@@ -231,16 +243,19 @@ where
         match self {
             Self::Real(real) => (real.exit)(actions, to),
             Self::Initial { .. } => {}
+            Self::Exit() => {}
         }
     }
 }
 
-impl<T> RealState<T>
+// State constructors live on the node type: each builds its RealState and lifts it into a
+// PlantFsmStateNode, so a transition can target either a real state or a pseudo-state (e.g. Exit).
+impl<T> PlantFsmStateNode<T>
 where
     T: IPlantFsmActions,
 {
     fn winter() -> Self {
-        Self {
+        RealState::<T> {
             id: PlantFsmState::Winter,
             transition: |event, actions| match event {
                 PlantFsmEvent::TimeAdvances(params) if actions.enough_time_passed(&params) => {
@@ -262,18 +277,16 @@ where
             exit: |_actions, _to| {},
             defer_event: |_event| false,
         }
+        .into()
     }
 
     fn winter_freezing() -> Self {
-        Self {
+        RealState::<T> {
             id: PlantFsmState::WinterFreezing,
             transition: |event, actions| match event {
                 PlantFsmEvent::TemperatureRises(_) => Some(Self::winter_mild()),
                 // Check the parent
-                _ => {
-                    let parent = Self::winter();
-                    (parent.transition)(event, actions)
-                }
+                _ => Self::winter().transition(event, actions),
             },
             direct_transition: |action| {
                 if action.has_very_cold_weather() {
@@ -284,47 +297,44 @@ where
                 }
             },
             enter_state: Self::winter_freezing,
-            enter: |actions, from| (Self::winter().enter)(actions, from),
-            exit: |actions, to| (Self::winter().exit)(actions, to),
+            enter: |actions, from| Self::winter().enter(actions, from),
+            exit: |actions, to| Self::winter().exit(actions, to),
             defer_event: |_event| false,
         }
+        .into()
     }
 
     fn winter_mild() -> Self {
-        Self {
+        RealState::<T> {
             id: PlantFsmState::WinterMild,
             transition: |event, actions| match event {
                 PlantFsmEvent::TemperatureDrops(_) => Some(Self::winter_freezing()),
-                _ => {
-                    let parent = Self::winter();
-                    (parent.transition)(event, actions)
-                }
+                _ => Self::winter().transition(event, actions),
             },
             direct_transition: |_action| None,
             enter_state: Self::winter_mild,
-            enter: |actions, from| (Self::winter().enter)(actions, from),
-            exit: |actions, to| (Self::winter().exit)(actions, to),
+            enter: |actions, from| Self::winter().enter(actions, from),
+            exit: |actions, to| Self::winter().exit(actions, to),
             defer_event: |_event| false,
         }
+        .into()
     }
 
     fn winter_arctic_blast() -> Self {
-        Self {
+        RealState::<T> {
             id: PlantFsmState::WinterArcticBlast,
-            transition: |event, actions| {
-                let parent = Self::winter();
-                (parent.transition)(event, actions)
-            },
+            transition: |event, actions| Self::winter().transition(event, actions),
             direct_transition: |_action| None,
             enter_state: Self::winter_arctic_blast,
-            enter: |actions, from| (Self::winter().enter)(actions, from),
-            exit: |actions, to| (Self::winter().exit)(actions, to),
+            enter: |actions, from| Self::winter().enter(actions, from),
+            exit: |actions, to| Self::winter().exit(actions, to),
             defer_event: |event| matches!(event, PlantFsmEvent::TemperatureRises(_)),
         }
+        .into()
     }
 
     fn spring() -> Self {
-        Self {
+        RealState::<T> {
             id: PlantFsmState::Spring,
             transition: |event, actions| match event {
                 PlantFsmEvent::TimeAdvances(params) if actions.enough_time_passed(&params) => {
@@ -339,46 +349,43 @@ where
             exit: |_actions, _to| {},
             defer_event: |_event| false,
         }
+        .into()
     }
 
     fn spring_brisk() -> Self {
-        Self {
+        RealState::<T> {
             id: PlantFsmState::SpringBrisk,
             transition: |event, actions| match event {
                 PlantFsmEvent::TemperatureRises(_) => Some(Self::spring_temperate()),
-                _ => {
-                    let parent = Self::spring();
-                    (parent.transition)(event, actions)
-                }
+                _ => Self::spring().transition(event, actions),
             },
             direct_transition: |_action| None,
             enter_state: Self::spring_brisk,
-            enter: |actions, from| (Self::spring().enter)(actions, from),
-            exit: |actions, to| (Self::spring().exit)(actions, to),
+            enter: |actions, from| Self::spring().enter(actions, from),
+            exit: |actions, to| Self::spring().exit(actions, to),
             defer_event: |_event| false,
         }
+        .into()
     }
 
     fn spring_temperate() -> Self {
-        Self {
+        RealState::<T> {
             id: PlantFsmState::SpringTemperate,
             transition: |event, actions| match event {
                 PlantFsmEvent::TemperatureDrops(_) => Some(Self::spring_brisk()),
-                _ => {
-                    let parent = Self::spring();
-                    (parent.transition)(event, actions)
-                }
+                _ => Self::spring().transition(event, actions),
             },
             direct_transition: |_action| None,
             enter_state: Self::spring_temperate,
-            enter: |actions, from| (Self::spring().enter)(actions, from),
-            exit: |actions, to| (Self::spring().exit)(actions, to),
+            enter: |actions, from| Self::spring().enter(actions, from),
+            exit: |actions, to| Self::spring().exit(actions, to),
             defer_event: |_event| false,
         }
+        .into()
     }
 
     fn summer() -> Self {
-        Self {
+        RealState::<T> {
             id: PlantFsmState::Summer,
             transition: |event, actions| match event {
                 PlantFsmEvent::TimeAdvances(params) if actions.enough_time_passed(&params) => {
@@ -393,28 +400,27 @@ where
             exit: |_actions, _to| {},
             defer_event: |_event| false,
         }
+        .into()
     }
 
     fn summer_balmy() -> Self {
-        Self {
+        RealState::<T> {
             id: PlantFsmState::SummerBalmy,
             transition: |event, actions| match event {
                 PlantFsmEvent::TemperatureRises(_) => Some(Self::summer_scorching()),
-                _ => {
-                    let parent = Self::summer();
-                    (parent.transition)(event, actions)
-                }
+                _ => Self::summer().transition(event, actions),
             },
             direct_transition: |_action| None,
             enter_state: Self::summer_balmy,
-            enter: |actions, from| (Self::summer().enter)(actions, from),
-            exit: |actions, to| (Self::summer().exit)(actions, to),
+            enter: |actions, from| Self::summer().enter(actions, from),
+            exit: |actions, to| Self::summer().exit(actions, to),
             defer_event: |_event| false,
         }
+        .into()
     }
 
     fn summer_scorching() -> Self {
-        Self {
+        RealState::<T> {
             id: PlantFsmState::SummerScorching,
             transition: |event, actions| match event {
                 PlantFsmEvent::TemperatureDrops(_) => Some(Self::summer_balmy()),
@@ -422,10 +428,7 @@ where
                     actions.spontaneous_combustion(params);
                     None
                 }
-                _ => {
-                    let parent = Self::summer();
-                    (parent.transition)(event, actions)
-                }
+                _ => Self::summer().transition(event, actions),
             },
             direct_transition: |_action| None,
             enter_state: Self::summer_scorching,
@@ -433,10 +436,11 @@ where
             exit: |actions, _to| actions.end_heat_wave(),
             defer_event: |_event| false,
         }
+        .into()
     }
 
     fn autumn() -> Self {
-        Self {
+        RealState::<T> {
             id: PlantFsmState::Autumn,
             transition: |event, actions| match event {
                 PlantFsmEvent::TimeAdvances(params) if actions.enough_time_passed(&params) => {
@@ -451,42 +455,39 @@ where
             exit: |_actions, _to| {},
             defer_event: |_event| false,
         }
+        .into()
     }
 
     fn autumn_crisp() -> Self {
-        Self {
+        RealState::<T> {
             id: PlantFsmState::AutumnCrisp,
             transition: |event, actions| match event {
                 PlantFsmEvent::TemperatureRises(_) => Some(Self::autumn_pleasant()),
-                _ => {
-                    let parent = Self::autumn();
-                    (parent.transition)(event, actions)
-                }
+                _ => Self::autumn().transition(event, actions),
             },
             direct_transition: |_action| None,
             enter_state: Self::autumn_crisp,
-            enter: |actions, from| (Self::autumn().enter)(actions, from),
-            exit: |actions, to| (Self::autumn().exit)(actions, to),
+            enter: |actions, from| Self::autumn().enter(actions, from),
+            exit: |actions, to| Self::autumn().exit(actions, to),
             defer_event: |_event| false,
         }
+        .into()
     }
 
     fn autumn_pleasant() -> Self {
-        Self {
+        RealState::<T> {
             id: PlantFsmState::AutumnPleasant,
             transition: |event, actions| match event {
                 PlantFsmEvent::TemperatureDrops(_) => Some(Self::autumn_crisp()),
-                _ => {
-                    let parent = Self::autumn();
-                    (parent.transition)(event, actions)
-                }
+                _ => Self::autumn().transition(event, actions),
             },
             direct_transition: |_action| None,
             enter_state: Self::autumn_pleasant,
-            enter: |actions, from| (Self::autumn().enter)(actions, from),
-            exit: |actions, to| (Self::autumn().exit)(actions, to),
+            enter: |actions, from| Self::autumn().enter(actions, from),
+            exit: |actions, to| Self::autumn().exit(actions, to),
             defer_event: |_event| false,
         }
+        .into()
     }
 }
 

@@ -105,6 +105,26 @@ impl UmlFsmBuilder {
             TransitionParameters::Enter { target } => TransitionData::Enter {
                 target: self.find_or_create_state(target),
             },
+            TransitionParameters::Final {
+                source,
+                event,
+                action,
+                guard,
+            } => {
+                let source = self.find_or_create_state(source);
+                // Only the top level can terminate the FSM; a composite substate exiting to
+                // `[*]` needs completion-transition desugaring, not implemented yet.
+                if self.arena[source].parent().is_some() {
+                    let name = &self.arena[source].get().name;
+                    todo!("composite substate '{name}' exit to [*] (completion transitions)");
+                }
+                TransitionData::Final {
+                    source,
+                    event,
+                    action,
+                    guard,
+                }
+            }
         }
     }
 
