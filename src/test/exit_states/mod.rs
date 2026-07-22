@@ -63,6 +63,29 @@ fn build_composite_exit_fsm() -> Result<UmlFsm> {
     builder.build()
 }
 
+/// An event-less ("completion") exit: `Done --> [*]` fires as soon as `Done` is reached,
+/// tearing it down and ending the FSM without an explicit event.
+fn build_completion_exit_fsm() -> Result<UmlFsm> {
+    let mut builder = UmlFsmBuilder::new("CompletionExit");
+    builder.add_transition(TransitionParameters::Enter { target: "Active" });
+    builder.add_transition(TransitionParameters::Event {
+        source: "Active",
+        target: "Done",
+        event: Event("Finish".into()),
+        action: None,
+        guard: None,
+    });
+    builder.add_exit_action("Done", Action::from("Cleanup"));
+    builder.add_transition(TransitionParameters::Final {
+        source: "Done",
+        event: None,
+        action: None,
+        guard: None,
+    });
+
+    builder.build()
+}
+
 impl FsmTestData {
     pub fn exit_states() -> Self {
         let path = get_adjacent_file_path(file!(), "exit_states.puml");
@@ -80,6 +103,16 @@ impl FsmTestData {
             name: "composite_exit",
             content: include_str!("./composite_exit.puml"),
             parsed: build_composite_exit_fsm().expect("Failed to create expected FSM"),
+            path,
+        }
+    }
+
+    pub fn completion_exit() -> Self {
+        let path = get_adjacent_file_path(file!(), "completion_exit.puml");
+        Self {
+            name: "completion_exit",
+            content: include_str!("./completion_exit.puml"),
+            parsed: build_completion_exit_fsm().expect("Failed to create expected FSM"),
             path,
         }
     }
