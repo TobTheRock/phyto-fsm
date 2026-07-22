@@ -81,7 +81,6 @@ fn add_fsm_elements(
         }
     }
 
-    // Exit transitions (`State --> [*]`) terminate the enclosing region.
     for exit in &elements.exit_transitions {
         let label = exit
             .description

@@ -233,7 +233,6 @@ pub fn generate_state_struct(ctx: &GenerationContext) -> proc_macro2::TokenStrea
         enum #state_node<A: #actions_trait> {
             Real(#real_state<A>),
             Initial { target: fn() -> #state_node<A> },
-            // The `[*]` final pseudo-state: reaching it ends the FSM (no active state).
             Exit(),
         }
 
@@ -577,9 +576,13 @@ fn log_level_token(level: log::Level) -> proc_macro2::TokenStream {
 }
 
 fn generate_direct_transition(state: &crate::fsm::State<'_>) -> proc_macro2::TokenStream {
-    // ponytail: only event-triggered exit (`S --> [*] : Event`) is supported. A bare
-    // completion exit (`S --> [*]`, no event) parses to `Final { event: None }` but has no
-    // codegen path here; add a `Final { event: None }` branch emitting `Some(Self::Exit())` if needed.
+    // This closure generates the event-less ("completion") transitions, but only to real
+    // states — the `Direct` filter below. A bare completion exit `S --> [*]` (no event) is a
+    // `Final { event: None }`, which the filter drops here; it is also dropped from the
+    // event path in `generate_state_impl` (that path keeps only `t.event()`-bearing
+    // transitions). So a completion exit currently generates nothing and is silently ignored.
+    // ponytail: only event-triggered exit `S --> [*] : Event` is supported. To add completion
+    // exit, match `Final { event: None }` here and emit `Some(Self::Exit())`.
     let direct_transitions: Vec<_> = state
         .transitions()
         .filter(|t| matches!(t, crate::fsm::Transition::Direct { .. }))

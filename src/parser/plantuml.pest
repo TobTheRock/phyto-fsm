@@ -34,7 +34,6 @@ element = {
 enter_transition = { "[*]" ~ sp* ~ arrow ~ sp* ~ state_name ~ sp* ~ NEWLINE }
 
 // Exit transition: StateName --> [*] : description
-// The `[*]` final pseudo-state ends the enclosing region.
 exit_transition = {
     state_name ~ sp* ~ arrow ~ sp* ~ "[*]" ~
     (sp* ~ ":" ~ sp* ~ description)? ~

@@ -29,8 +29,6 @@ fn build_exit_states_fsm() -> Result<UmlFsm> {
     builder.build()
 }
 
-/// A composite region that terminates the FSM: the top-level `Working` composite exits to
-/// `[*]`, tearing down its active substate before ending the machine.
 fn build_composite_exit_fsm() -> Result<UmlFsm> {
     let mut builder = UmlFsmBuilder::new("CompositeExit");
     builder.add_transition(TransitionParameters::Enter { target: "Working" });

@@ -112,8 +112,8 @@ impl UmlFsmBuilder {
                 guard,
             } => {
                 let source = self.find_or_create_state(source);
-                // Only the top level can terminate the FSM; a composite substate exiting to
-                // `[*]` needs completion-transition desugaring, not implemented yet.
+                // A substate exiting to `[*]` completes its region rather than terminating
+                // the FSM — a different lowering, not implemented yet (see todo).
                 if self.arena[source].parent().is_some() {
                     let name = &self.arena[source].get().name;
                     todo!("composite substate '{name}' exit to [*] (completion transitions)");
