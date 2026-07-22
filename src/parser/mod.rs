@@ -149,7 +149,7 @@ mod test {
 
     const FSM_CASES: TestCases<FsmTestData> = cases!(FsmTestData::all());
 
-    #[test_casing(12, FSM_CASES)]
+    #[test_casing(14, FSM_CASES)]
     fn parses_fsm(data: FsmTestData) {
         let fsm = UmlFsm::try_parse(data.content).unwrap();
         assert_eq!(data.parsed, fsm);

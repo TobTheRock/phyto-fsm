@@ -4,6 +4,7 @@ use crate::fsm;
 mod actions;
 mod composite_states;
 mod deferred_events;
+mod exit_states;
 mod four_seasons;
 mod misc;
 mod transitions;
@@ -33,6 +34,8 @@ impl FsmTestData {
             Self::actions(),
             Self::composite_states(),
             Self::enter_exit(),
+            Self::exit_states(),
+            Self::composite_exit(),
             Self::four_seasons(),
             Self::misc(),
             Self::guards(),
