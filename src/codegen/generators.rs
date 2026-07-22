@@ -576,16 +576,17 @@ fn log_level_token(level: log::Level) -> proc_macro2::TokenStream {
 }
 
 fn generate_direct_transition(state: &crate::fsm::State<'_>) -> proc_macro2::TokenStream {
-    // This closure generates the event-less ("completion") transitions, but only to real
-    // states — the `Direct` filter below. A bare completion exit `S --> [*]` (no event) is a
-    // `Final { event: None }`, which the filter drops here; it is also dropped from the
-    // event path in `generate_state_impl` (that path keeps only `t.event()`-bearing
-    // transitions). So a completion exit currently generates nothing and is silently ignored.
-    // ponytail: only event-triggered exit `S --> [*] : Event` is supported. To add completion
-    // exit, match `Final { event: None }` here and emit `Some(Self::Exit())`.
+    // Event-less ("completion") transitions: a `Direct` transition to a real state, or a
+    // completion exit `S --> [*]` (`Final` with no event) which resolves to the final state.
     let direct_transitions: Vec<_> = state
         .transitions()
-        .filter(|t| matches!(t, crate::fsm::Transition::Direct { .. }))
+        .filter(|t| {
+            matches!(
+                t,
+                crate::fsm::Transition::Direct { .. }
+                    | crate::fsm::Transition::Final { event: None, .. }
+            )
+        })
         .collect();
 
     if direct_transitions.is_empty() {
@@ -597,8 +598,13 @@ fn generate_direct_transition(state: &crate::fsm::State<'_>) -> proc_macro2::Tok
     let branches: Vec<_> = direct_transitions
         .iter()
         .map(|t| {
-            let dest = t.destination().unwrap();
-            let dest_fn = dest.function_ident();
+            let dest = match t {
+                crate::fsm::Transition::Final { .. } => quote::quote! { Self::Exit() },
+                _ => {
+                    let dest_fn = t.destination().unwrap().function_ident();
+                    quote::quote! { Self::#dest_fn() }
+                }
+            };
 
             let action = if let Some(a) = t.action() {
                 let action_ident = a.ident();
@@ -612,13 +618,13 @@ fn generate_direct_transition(state: &crate::fsm::State<'_>) -> proc_macro2::Tok
                 quote::quote! {
                     if action.#guard_ident() {
                         #action
-                        return Some(Self::#dest_fn());
+                        return Some(#dest);
                     }
                 }
             } else {
                 quote::quote! {
                     #action
-                    return Some(Self::#dest_fn());
+                    return Some(#dest);
                 }
             }
         })
