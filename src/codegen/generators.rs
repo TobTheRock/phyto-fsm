@@ -201,9 +201,9 @@ pub fn generate_state_struct(ctx: &GenerationContext) -> proc_macro2::TokenStrea
         #[derive(Copy)]
         struct #real_state<A: #actions_trait> {
             id: #state_id_enum,
-            transition: fn(event: #event_enum<A>, actions: &mut A) -> Option<#real_state<A>>,
-            direct_transition: fn(actions: &mut A) -> Option<#real_state<A>>,
-            enter_state: fn() -> #real_state<A>,
+            transition: fn(event: #event_enum<A>, actions: &mut A) -> Option<#state_node<A>>,
+            direct_transition: fn(actions: &mut A) -> Option<#state_node<A>>,
+            enter_state: fn() -> #state_node<A>,
             enter: fn(&mut A, from: &#state_node<A>),
             exit: fn(&mut A, to: &#state_node<A>),
             #defer_field
@@ -232,7 +232,9 @@ pub fn generate_state_struct(ctx: &GenerationContext) -> proc_macro2::TokenStrea
         #[derive(Copy, Clone)]
         enum #state_node<A: #actions_trait> {
             Real(#real_state<A>),
-            Initial { target: fn() -> #real_state<A> },
+            Initial { target: fn() -> #state_node<A> },
+            // The `[*]` final pseudo-state: reaching it ends the FSM (no active state).
+            Exit(),
         }
 
         impl<A: #actions_trait> std::fmt::Display for #state_node<A> {
@@ -240,26 +242,29 @@ pub fn generate_state_struct(ctx: &GenerationContext) -> proc_macro2::TokenStrea
                 match self {
                     Self::Real(real) => write!(f, "{}", real.id),
                     Self::Initial { .. } => write!(f, "[*]"),
+                    Self::Exit() => write!(f, "[*]"),
                 }
             }
         }
 
         impl<A: #actions_trait> #state_node<A> {
             fn init() -> Self {
-                Self::Initial { target: #real_state::<A>::#fsm_enter_fn }
+                Self::Initial { target: Self::#fsm_enter_fn }
             }
 
             fn id(&self) -> Option<#state_id_enum> {
                 match self {
                     Self::Real(real) => Some(real.id),
                     Self::Initial { .. } => None,
+                    Self::Exit() => None,
                 }
             }
 
             fn resolve_enter_state(&self) -> Self {
                 match self {
-                    Self::Real(real) => Self::Real((real.enter_state)()),
-                    Self::Initial { target } => Self::Real(target()),
+                    Self::Real(real) => (real.enter_state)(),
+                    Self::Initial { target } => target(),
+                    Self::Exit() => Self::Exit(),
                 }
             }
 
@@ -267,15 +272,17 @@ pub fn generate_state_struct(ctx: &GenerationContext) -> proc_macro2::TokenStrea
 
             fn transition(&self, event: #event_enum<A>, actions: &mut A) -> Option<Self> {
                 match self {
-                    Self::Real(real) => (real.transition)(event, actions).map(Self::Real),
+                    Self::Real(real) => (real.transition)(event, actions),
                     Self::Initial { .. } => None,
+                    Self::Exit() => None,
                 }
             }
 
             fn direct_transition(&self, actions: &mut A) -> Option<Self> {
                 match self {
-                    Self::Real(real) => (real.direct_transition)(actions).map(Self::Real),
-                    Self::Initial { target } => Some(Self::Real(target())),
+                    Self::Real(real) => (real.direct_transition)(actions),
+                    Self::Initial { target } => Some(target()),
+                    Self::Exit() => None,
                 }
             }
 
@@ -283,6 +290,7 @@ pub fn generate_state_struct(ctx: &GenerationContext) -> proc_macro2::TokenStrea
                 match self {
                     Self::Real(real) => (real.enter)(actions, from),
                     Self::Initial { .. } => {}
+                    Self::Exit() => {}
                 }
             }
 
@@ -290,6 +298,7 @@ pub fn generate_state_struct(ctx: &GenerationContext) -> proc_macro2::TokenStrea
                 match self {
                     Self::Real(real) => (real.exit)(actions, to),
                     Self::Initial { .. } => {}
+                    Self::Exit() => {}
                 }
             }
         }
@@ -298,6 +307,7 @@ pub fn generate_state_struct(ctx: &GenerationContext) -> proc_macro2::TokenStrea
 
 pub fn generate_state_impl(ctx: &GenerationContext) -> proc_macro2::TokenStream {
     let state_id_enum = &ctx.idents.state_id_enum;
+    let real_state = &ctx.idents.real_state_struct;
 
     let state_fns = ctx.fsm.states().map(|state| {
         let state_id_variant = state.state_id_variant_ident();
@@ -306,13 +316,16 @@ pub fn generate_state_impl(ctx: &GenerationContext) -> proc_macro2::TokenStream 
         let transitions = state.transitions().filter_map(|t| {
             let event_ident = t.event()?.ident();
             let event_enum = &ctx.idents.event_enum;
-            let next_state = t
-                .destination()
-                .map(|d| {
-                    let fn_ident = d.function_ident();
-                    quote::quote! { Some(Self::#fn_ident()) }
-                })
-                .unwrap_or_else(|| quote::quote! { None });
+            let next_state = if matches!(t, crate::fsm::Transition::Final { .. }) {
+                quote::quote! { Some(Self::Exit()) }
+            } else {
+                t.destination()
+                    .map(|d| {
+                        let fn_ident = d.function_ident();
+                        quote::quote! { Some(Self::#fn_ident()) }
+                    })
+                    .unwrap_or_else(|| quote::quote! { None })
+            };
             let action = if let Some(a) = t.action() {
                 let action_ident = a.ident();
                 quote::quote! { action.#action_ident(params); }
@@ -338,10 +351,7 @@ pub fn generate_state_impl(ctx: &GenerationContext) -> proc_macro2::TokenStream 
         let parent_transition = if let Some(parent) = state.parent() {
             let parent_fn = parent.function_ident();
             quote::quote! {
-                    {
-                    let parent = Self::#parent_fn();
-                    (parent.transition)(event, action)
-                }
+                Self::#parent_fn().transition(event, action)
             }
         } else {
             quote::quote! {
@@ -356,9 +366,11 @@ pub fn generate_state_impl(ctx: &GenerationContext) -> proc_macro2::TokenStream 
         let direct_transition = generate_direct_transition(&state);
         let defer_event = ctx.deferred.state_field_value(&state);
 
+        // Constructors live on the node type so a transition can yield a real state or a
+        // pseudo-state (e.g. `Exit`); each lifts its `RealState` into a node.
         quote::quote! {
             fn #fn_name() -> Self {
-                Self {
+                Self::Real(#real_state::<A> {
                     id: #state_id_enum::#state_id_variant,
                     transition: |event, action| match event {
                         #(#transitions,)*
@@ -369,15 +381,15 @@ pub fn generate_state_impl(ctx: &GenerationContext) -> proc_macro2::TokenStream 
                     enter: #enter_action,
                     exit: #exit_action,
                     #defer_event
-                }
+                })
             }
         }
     });
 
-    let real_state = &ctx.idents.real_state_struct;
+    let state_node = &ctx.idents.state_node_enum;
     let actions_trait = &ctx.idents.action_trait;
     quote::quote! {
-        impl<A: #actions_trait> #real_state<A> {
+        impl<A: #actions_trait> #state_node<A> {
             #(#state_fns)*
         }
     }
@@ -565,6 +577,9 @@ fn log_level_token(level: log::Level) -> proc_macro2::TokenStream {
 }
 
 fn generate_direct_transition(state: &crate::fsm::State<'_>) -> proc_macro2::TokenStream {
+    // ponytail: only event-triggered exit (`S --> [*] : Event`) is supported. A bare
+    // completion exit (`S --> [*]`, no event) parses to `Final { event: None }` but has no
+    // codegen path here; add a `Final { event: None }` branch emitting `Some(Self::Exit())` if needed.
     let direct_transitions: Vec<_> = state
         .transitions()
         .filter(|t| matches!(t, crate::fsm::Transition::Direct { .. }))
@@ -636,7 +651,7 @@ fn generate_enter_action(
     let parent_enter = if let Some(parent) = state.parent() {
         let parent_fn = parent.function_ident();
         quote::quote! {
-        (Self::#parent_fn().enter)(actions, from);
+        Self::#parent_fn().enter(actions, from);
         }
     } else {
         quote::quote! {}
@@ -668,7 +683,7 @@ fn generate_exit_action(
     let parent_exit = if let Some(parent) = state.parent() {
         let parent_fn = parent.function_ident();
         quote::quote! {
-        (Self::#parent_fn().exit)(actions, to);
+        Self::#parent_fn().exit(actions, to);
         }
     } else {
         quote::quote! {}
