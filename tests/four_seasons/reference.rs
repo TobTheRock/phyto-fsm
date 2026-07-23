@@ -268,7 +268,11 @@ where
             enter: |actions, from| {
                 if matches!(
                     from.id(),
-                    Some(PlantFsmState::WinterFreezing | PlantFsmState::WinterMild)
+                    Some(
+                        PlantFsmState::WinterFreezing
+                            | PlantFsmState::WinterMild
+                            | PlantFsmState::WinterArcticBlast
+                    )
                 ) {
                     return;
                 }
