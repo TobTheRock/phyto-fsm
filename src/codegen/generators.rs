@@ -576,6 +576,13 @@ fn log_level_token(level: log::Level) -> proc_macro2::TokenStream {
 }
 
 fn generate_direct_transition(state: &crate::fsm::State<'_>) -> proc_macro2::TokenStream {
+    // TODO(guarded-parent-direct): unlike event transitions, a substate does NOT inherit its
+    // parent's direct transitions (no `_ => Self::parent().direct_transition(action)` fallback).
+    // That is deliberate for *completion* transitions (unguarded `Parent --> Done`), which must
+    // not auto-fire before the region runs. But a *guarded* parent direct (`Parent --[g]--> X`)
+    // is a real UML group/boundary transition and should apply to every substate. Add that
+    // fallback for guarded directs only, once a puml needs it. See exit-states notes.
+    //
     // Event-less ("completion") transitions: a `Direct` transition to a real state, or a
     // completion exit `S --> [*]` (`Final` with no event) which resolves to the final state.
     let direct_transitions: Vec<_> = state

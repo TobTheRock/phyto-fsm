@@ -86,6 +86,51 @@ fn build_completion_exit_fsm() -> Result<UmlFsm> {
     builder.build()
 }
 
+/// A substate exiting to `[*]` completes its region rather than ending the FSM: `Idle --> [*]`
+/// inside `Working` fires `Working`'s completion transition (`Working --> Done`). The builder
+/// lowers the substate `Final` onto that completion target — only the top-level `Done --> [*]`
+/// terminates.
+fn build_substate_exit_fsm() -> Result<UmlFsm> {
+    let mut builder = UmlFsmBuilder::new("SubstateExit");
+    builder.add_transition(TransitionParameters::Enter { target: "Working" });
+    let working = builder.add_state("Working");
+
+    builder.set_scope(Some(working));
+    builder.add_transition(TransitionParameters::Enter { target: "Busy" });
+    builder.add_transition(TransitionParameters::Event {
+        source: "Busy",
+        target: "Idle",
+        event: Event("Pause".into()),
+        action: None,
+        guard: None,
+    });
+    // Substate exit: lowered onto Working's completion target (`Done`), keeping its `Finish` event
+    builder.add_transition(TransitionParameters::Final {
+        source: "Idle",
+        event: Some(Event("Finish".into())),
+        action: None,
+        guard: None,
+    });
+    builder.set_scope(None);
+
+    // Completion transition: where Working goes once its region is done
+    builder.add_transition(TransitionParameters::Direct {
+        source: "Working",
+        target: "Done",
+        action: None,
+        guard: None,
+    });
+    // Top-level exit: ends the FSM
+    builder.add_transition(TransitionParameters::Final {
+        source: "Done",
+        event: Some(Event("Shutdown".into())),
+        action: None,
+        guard: None,
+    });
+
+    builder.build()
+}
+
 impl FsmTestData {
     pub fn exit_states() -> Self {
         let path = get_adjacent_file_path(file!(), "exit_states.puml");
@@ -113,6 +158,16 @@ impl FsmTestData {
             name: "completion_exit",
             content: include_str!("./completion_exit.puml"),
             parsed: build_completion_exit_fsm().expect("Failed to create expected FSM"),
+            path,
+        }
+    }
+
+    pub fn substate_exit() -> Self {
+        let path = get_adjacent_file_path(file!(), "substate_exit.puml");
+        Self {
+            name: "substate_exit",
+            content: include_str!("./substate_exit.puml"),
+            parsed: build_substate_exit_fsm().expect("Failed to create expected FSM"),
             path,
         }
     }

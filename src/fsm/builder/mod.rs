@@ -110,21 +110,12 @@ impl UmlFsmBuilder {
                 event,
                 action,
                 guard,
-            } => {
-                let source = self.find_or_create_state(source);
-                // A substate exiting to `[*]` completes its region rather than terminating
-                // the FSM — a different lowering, not implemented yet (see todo).
-                if self.arena[source].parent().is_some() {
-                    let name = &self.arena[source].get().name;
-                    todo!("composite substate '{name}' exit to [*] (completion transitions)");
-                }
-                TransitionData::Final {
-                    source,
-                    event,
-                    action,
-                    guard,
-                }
-            }
+            } => TransitionData::Final {
+                source: self.find_or_create_state(source),
+                event,
+                action,
+                guard,
+            },
         }
     }
 
@@ -160,6 +151,11 @@ impl UmlFsmBuilder {
                 .map(|node| node.get().name.as_str())
                 .collect::<Vec<_>>()
         );
+
+        // Validate the substate-exit precondition, then redirect those exits onto the parent's
+        // completion target before the remaining checks see (and validate) the rewritten form.
+        validation::substate_exits_have_completion(&self.arena)?;
+        inheritance::redirect_substate_exits(&mut self.arena);
 
         validation::injective_action_mapping(&self.arena)?;
         validation::no_conflicting_transitions(&self.arena)?;

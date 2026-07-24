@@ -22,6 +22,23 @@ impl StateData {
             .iter()
             .any(|t| matches!(t, TransitionData::Enter { .. }))
     }
+
+    /// The state this composite hands off to once its region completes: the target of its first
+    /// unguarded `Direct` (`Parent --> Target`) completion transition, or `None` if it has none.
+    ///
+    // TODO(guarded-completion): honors only the first unguarded completion, dropping its effect
+    // and ignoring guarded alternatives (`Parent --[g]--> X`). Multiple *unguarded* completions
+    // are already rejected as conflicts; add guarded/effectful completion when a puml needs it.
+    pub fn completion_target(&self) -> Option<StateId> {
+        self.transitions.iter().find_map(|t| match t {
+            TransitionData::Direct {
+                target,
+                guard: None,
+                ..
+            } => Some(*target),
+            _ => None,
+        })
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
