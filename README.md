@@ -35,6 +35,7 @@ This way the design of the FSM is easy to grasp first hand and documentation and
 | Guard conditions | Conditional transitions using `[GuardName]` syntax | [guards.rs](https://github.com/TobTheRock/phytofsm/blob/main/tests/guards.rs) |
 | Internal transitions | Stay in state without triggering exit/enter actions | [internal_transitions.rs](https://github.com/TobTheRock/phytofsm/blob/main/tests/internal_transitions.rs) |
 | Direct transitions | Automatic transitions without events, with optional guards and actions | [direct_transitions.rs](https://github.com/TobTheRock/phytofsm/blob/main/tests/direct_transitions.rs) |
+| Exit / final states | `--> [*]` ends the FSM (top level) or completes a composite region (substate), with optional guarded completion targets | [exit_states.rs](https://github.com/TobTheRock/phytofsm/blob/main/tests/exit_states.rs) [substate_exit.rs](https://github.com/TobTheRock/phytofsm/blob/main/tests/substate_exit.rs) [guarded_completion.rs](https://github.com/TobTheRock/phytofsm/blob/main/tests/guarded_completion.rs) |
 | Deferred events | Events deferred in one state are re-evaluated after transitioning to another state | [deferred_events.rs](https://github.com/TobTheRock/phytofsm/blob/main/tests/deferred_events.rs) |
 | Transition logging | Optional runtime logging via [log](https://docs.rs/log/latest/log/) crate | [four_seasons.rs](https://github.com/TobTheRock/phytofsm/blob/main/tests/four_seasons/main.rs) |
 | Custom naming templates | Override default naming patterns for generated types | [custom_naming.rs](https://github.com/TobTheRock/phytofsm/blob/main/tests/custom_naming.rs) |
@@ -42,7 +43,6 @@ This way the design of the FSM is easy to grasp first hand and documentation and
 ### Missing Features
 
 - Pseudo States
-  - exit
   - history states
   - ...
 - sub state machines
@@ -154,6 +154,37 @@ Direct transition actions and guards have no event parameters:
 ```rust,ignore
 fn action_name(&mut self);
 fn guard_name(&self) -> bool;
+```
+
+### Exit / Final States
+
+A transition to the `[*]` final pseudo-state ends the enclosing region. Its meaning depends on where the source lives:
+
+```puml
+' Top level: the whole FSM terminates. active_state() returns None afterwards.
+Active --> [*] : Shutdown / Goodbye
+
+' Substate: the composite region completes and hands off via the parent's completion transition.
+state Working {
+    [*] --> Busy
+    Idle --> [*] : Finish
+}
+Working --> Done
+```
+
+- **Top-level `--> [*]`**: the FSM reaches its final state. `active_state()` returns `None` and further events are no-ops. The exit may be event-triggered (`--> [*] : Ev`) or event-less.
+- **Substate `--> [*]`**: signals region completion. Instead of terminating, it fires the parent composite's **completion transition** (an unlabeled `Parent --> Target`), tearing down the region and handing off to `Target`.
+
+A composite can offer **guarded completion** targets — the substate exit fans out over every completion branch, and the first matching guard wins. A single unguarded branch acts as the default (`else`) and must come last:
+
+```puml
+state Working {
+    [*] --> Busy
+    Idle --> [*] : Finish
+}
+Working --> Recharge : [LowBattery] / Cleanup
+Working --> Done : [Ok]
+Working --> Standby
 ```
 
 ### Deferred Events
