@@ -26,6 +26,13 @@ pub struct TransitionDescription<'a> {
     pub description: Option<&'a str>,
 }
 
+/// A `State --> [*]` transition to the final pseudo-state. Has no target state.
+#[derive(Debug, PartialEq, Clone)]
+pub struct ExitTransition<'a> {
+    pub source: StateName<'a>,
+    pub description: Option<&'a str>,
+}
+
 #[derive(Debug, PartialEq, Clone, Default)]
 pub struct CompositeState<'a> {
     pub name: StateName<'a>,
@@ -36,6 +43,7 @@ pub struct CompositeState<'a> {
 pub struct StateElements<'a> {
     pub enter_states: Vec<StateName<'a>>,
     pub transitions: Vec<TransitionDescription<'a>>,
+    pub exit_transitions: Vec<ExitTransition<'a>>,
     pub composite_states: Vec<CompositeState<'a>>,
     pub state_descriptions: Vec<StateDescription<'a>>,
 }
@@ -86,6 +94,7 @@ fn parse_diagram_name(pair: Pair<'_>) -> Option<&str> {
 fn parse_content(pair: Pair<'_>) -> Result<StateElements<'_>> {
     let mut enter_states = Vec::new();
     let mut transitions = Vec::new();
+    let mut exit_transitions = Vec::new();
     let mut composite_states = Vec::new();
     let mut state_descriptions = Vec::new();
 
@@ -104,6 +113,9 @@ fn parse_content(pair: Pair<'_>) -> Result<StateElements<'_>> {
                 Rule::transition => {
                     transitions.push(parse_transition(element_inner)?);
                 }
+                Rule::exit_transition => {
+                    exit_transitions.push(parse_exit_transition(element_inner)?);
+                }
                 Rule::composite_state => {
                     composite_states.push(parse_composite_state(element_inner)?);
                 }
@@ -118,6 +130,7 @@ fn parse_content(pair: Pair<'_>) -> Result<StateElements<'_>> {
     Ok(StateElements {
         enter_states,
         transitions,
+        exit_transitions,
         composite_states,
         state_descriptions,
     })
@@ -156,6 +169,29 @@ fn parse_transition(pair: Pair<'_>) -> Result<TransitionDescription<'_>> {
     Ok(TransitionDescription {
         source: from.ok_or(ParseError::MissingSourceState)?,
         target: to.ok_or(ParseError::MissingDestinationState)?,
+        description,
+    })
+}
+
+fn parse_exit_transition(pair: Pair<'_>) -> Result<ExitTransition<'_>> {
+    let mut source = None;
+    let mut description = None;
+
+    for inner in pair.into_inner() {
+        match inner.as_rule() {
+            Rule::state_name => source = Some(inner.as_str()),
+            Rule::description => {
+                let text = inner.as_str().trim();
+                if !text.is_empty() {
+                    description = Some(text);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    Ok(ExitTransition {
+        source: source.ok_or(ParseError::MissingSourceState)?,
         description,
     })
 }

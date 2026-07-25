@@ -19,6 +19,35 @@ pub fn single_root_enter(arena: &ScopedArena<StateData>) -> Result<()> {
     })
 }
 
+/// Every substate `--> [*]` (a parented `Final`) needs a completion target on its parent
+/// composite (`Parent --> Target`) to lower onto. A top-level `[*]` genuinely terminates the
+/// FSM and is exempt.
+pub fn substate_exits_have_completion(arena: &ScopedArena<StateData>) -> Result<()> {
+    for id in arena.node_ids() {
+        let Some(parent) = arena[id].parent() else {
+            continue; // top-level `[*]` terminates the FSM
+        };
+        let has_substate_exit = arena[id]
+            .get()
+            .transitions
+            .iter()
+            .any(|t| matches!(t, TransitionData::Final { .. }));
+        if has_substate_exit
+            && arena[parent]
+                .get()
+                .completion_transitions()
+                .next()
+                .is_none()
+        {
+            return Err(BuildError::SubstateExitWithoutCompletion {
+                composite: arena[parent].get().name.clone(),
+            }
+            .into());
+        }
+    }
+    Ok(())
+}
+
 pub fn injective_action_mapping(arena: &ScopedArena<StateData>) -> Result<()> {
     let action_events = arena
         .iter()
@@ -50,9 +79,10 @@ pub fn injective_action_mapping(arena: &ScopedArena<StateData>) -> Result<()> {
 
 pub fn no_conflicting_transitions(arena: &ScopedArena<StateData>) -> Result<()> {
     for_each_transition_group(arena, |state_name, event, guards| {
-        let has_guards = guards.len() > 1;
-        let all_transitions_guarded = guards.iter().all(|g| g.is_some());
-        if has_guards && !all_transitions_guarded {
+        // A guarded set may carry one unguarded default (the "else" branch, tried last); two or
+        // more unguarded transitions on the same event are genuinely ambiguous.
+        let unguarded = guards.iter().filter(|g| g.is_none()).count();
+        if unguarded > 1 {
             return Err(BuildError::ConflictingTransitions {
                 state: state_name.to_string(),
                 event: event.clone(),

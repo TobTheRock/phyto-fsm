@@ -93,7 +93,9 @@ fn build_with_guarded_conflicting_transitions_succeeds() {
 }
 
 #[test]
-fn build_with_partially_guarded_conflicting_transitions_fails() {
+fn build_with_guarded_and_unguarded_default_succeeds() {
+    // A guarded transition plus one unguarded "else" branch is deterministic: the guard is tried
+    // first, the default catches the rest.
     let mut builder = UmlFsmBuilder::new("TestFSM");
     builder.add_transition(TransitionParameters::Enter { target: "A" });
     builder.add_transition(TransitionParameters::Event {
@@ -111,7 +113,31 @@ fn build_with_partially_guarded_conflicting_transitions_fails() {
         guard: None,
     });
     let result = builder.build();
-    assert!(result.is_err());
+    assert!(result.is_ok());
+}
+
+#[test]
+fn build_with_substate_exit_but_no_completion_fails() {
+    let mut builder = UmlFsmBuilder::new("TestFSM");
+    builder.add_transition(TransitionParameters::Enter { target: "Working" });
+    let working = builder.add_state("Working");
+
+    builder.set_scope(Some(working));
+    builder.add_transition(TransitionParameters::Enter { target: "Busy" });
+    // `Busy` exits its region to `[*]`, but `Working` has no completion transition to redirect onto.
+    builder.add_transition(TransitionParameters::Final {
+        source: "Busy",
+        event: Some("Finish".into()),
+        action: None,
+        guard: None,
+    });
+    builder.set_scope(None);
+
+    let err = builder.build().unwrap_err();
+    assert!(
+        err.to_string().contains("no completion transition"),
+        "expected SubstateExitWithoutCompletion, got: {err}"
+    );
 }
 
 #[test]

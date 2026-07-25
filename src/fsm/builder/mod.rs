@@ -105,6 +105,17 @@ impl UmlFsmBuilder {
             TransitionParameters::Enter { target } => TransitionData::Enter {
                 target: self.find_or_create_state(target),
             },
+            TransitionParameters::Final {
+                source,
+                event,
+                action,
+                guard,
+            } => TransitionData::Final {
+                source: self.find_or_create_state(source),
+                event,
+                action,
+                guard,
+            },
         }
     }
 
@@ -140,6 +151,11 @@ impl UmlFsmBuilder {
                 .map(|node| node.get().name.as_str())
                 .collect::<Vec<_>>()
         );
+
+        // Validate the substate-exit precondition, then redirect those exits onto the parent's
+        // completion target before the remaining checks see (and validate) the rewritten form.
+        validation::substate_exits_have_completion(&self.arena)?;
+        inheritance::redirect_substate_exits(&mut self.arena);
 
         validation::injective_action_mapping(&self.arena)?;
         validation::no_conflicting_transitions(&self.arena)?;

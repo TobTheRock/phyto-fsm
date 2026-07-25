@@ -1,0 +1,16 @@
+@startuml SubstateExit
+
+[*] --> Working
+
+state Working {
+    [*] --> Busy
+    Busy --> Idle : Pause
+    Idle --> [*] : Finish
+}
+
+' Completion transition: fires when Working's region reaches its final state
+Working --> Done
+
+Done --> [*] : Shutdown
+
+@enduml

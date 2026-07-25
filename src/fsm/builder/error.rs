@@ -12,6 +12,10 @@ pub enum BuildError {
     ConflictingTransitions { state: String, event: Option<Event> },
     #[error("Duplicate guard for event {0:?}")]
     DuplicateGuard(Option<Event>),
+    #[error(
+        "substate of '{composite}' exits to [*] but '{composite}' has no completion transition; add `{composite} --> <target>`"
+    )]
+    SubstateExitWithoutCompletion { composite: String },
 }
 
 impl From<BuildError> for crate::error::Error {

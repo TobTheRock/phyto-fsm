@@ -1,0 +1,14 @@
+@startuml CompositeExit
+
+[*] --> Working
+
+state Working {
+    [*] --> Busy
+    Busy --> Idle : Pause
+    Idle --> Busy : Resume
+}
+
+Working : exit / Cleanup
+Working --> [*] : Shutdown / Goodbye
+
+@enduml

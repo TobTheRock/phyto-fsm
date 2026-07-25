@@ -152,8 +152,13 @@ fn transition_key(
     Option<Action>,
     Option<Action>,
 ) {
+    let target = match &t {
+        // Distinct from `Internal` so an exit edge never dedups against an internal one.
+        Transition::Final { .. } => Some("[*]".to_string()),
+        _ => t.destination().map(|d| d.name().to_string()),
+    };
     (
-        t.destination().map(|d| d.name().to_string()),
+        target,
         t.event().cloned(),
         t.action().cloned(),
         t.guard().cloned(),

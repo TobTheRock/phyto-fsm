@@ -20,6 +20,7 @@ content = { element* }
 element = {
     ws* ~ (
         enter_transition |
+        exit_transition |
         transition |
         composite_state |
         state_declaration_with_desc |
@@ -31,6 +32,13 @@ element = {
 
 // Enter transition: [*] --> StateName or [*] -> StateName
 enter_transition = { "[*]" ~ sp* ~ arrow ~ sp* ~ state_name ~ sp* ~ NEWLINE }
+
+// Exit transition: StateName --> [*] : description
+exit_transition = {
+    state_name ~ sp* ~ arrow ~ sp* ~ "[*]" ~
+    (sp* ~ ":" ~ sp* ~ description)? ~
+    sp* ~ NEWLINE
+}
 
 // Regular transition: State1 --> State2 : description
 transition = {

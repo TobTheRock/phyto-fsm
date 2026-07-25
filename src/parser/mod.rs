@@ -81,6 +81,25 @@ fn add_fsm_elements(
         }
     }
 
+    for exit in &elements.exit_transitions {
+        let label = exit
+            .description
+            .map(uml::TransitionLabel::try_from)
+            .transpose()?;
+        let (events, action, guard) = match label {
+            Some(label) => (label.events, label.action, label.guard),
+            None => (Vec::new(), None, None),
+        };
+        for event in events_or_none(events) {
+            builder.add_transition(TransitionParameters::Final {
+                source: exit.source,
+                event,
+                action: action.clone(),
+                guard: guard.clone(),
+            });
+        }
+    }
+
     for desc in &elements.state_descriptions {
         match uml::StateDescription::try_from(desc.description) {
             Ok(uml::StateDescription::Entry(action)) => {
@@ -129,7 +148,7 @@ mod test {
 
     const FSM_CASES: TestCases<FsmTestData> = cases!(FsmTestData::all());
 
-    #[test_casing(12, FSM_CASES)]
+    #[test_casing(17, FSM_CASES)]
     fn parses_fsm(data: FsmTestData) {
         let fsm = UmlFsm::try_parse(data.content).unwrap();
         assert_eq!(data.parsed, fsm);

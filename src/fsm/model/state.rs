@@ -13,6 +13,32 @@ pub struct StateData {
     pub deferred_events: Vec<Event>,
 }
 
+/// A composite's event-less `Direct` transition, fired when its region completes.
+pub struct CompletionTransition<'a> {
+    pub target: StateId,
+    pub action: Option<&'a Action>,
+    pub guard: Option<&'a Action>,
+}
+
+/// A completion is exactly a `Direct` transition; every other kind yields `None`.
+impl<'a> From<&'a TransitionData> for Option<CompletionTransition<'a>> {
+    fn from(transition: &'a TransitionData) -> Self {
+        match transition {
+            TransitionData::Direct {
+                target,
+                action,
+                guard,
+                ..
+            } => Some(CompletionTransition {
+                target: *target,
+                action: action.as_ref(),
+                guard: guard.as_ref(),
+            }),
+            _ => None,
+        }
+    }
+}
+
 impl StateData {
     /// Whether this state is the initial state of its scope (owns an [`Enter`] transition).
     ///
@@ -21,6 +47,13 @@ impl StateData {
         self.transitions
             .iter()
             .any(|t| matches!(t, TransitionData::Enter { .. }))
+    }
+
+    /// This composite's completion transitions: its event-less `Direct` transitions
+    /// (`Parent --> X`, guarded or not), each a handoff fired when the region completes. A substate
+    /// exit fans out over all of them (see `redirect_substate_exits`).
+    pub fn completion_transitions(&self) -> impl Iterator<Item = CompletionTransition<'_>> {
+        self.transitions.iter().filter_map(Option::from)
     }
 }
 

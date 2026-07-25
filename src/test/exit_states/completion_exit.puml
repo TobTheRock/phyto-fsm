@@ -1,0 +1,8 @@
+@startuml CompletionExit
+
+[*] --> Active
+Active --> Done : Finish
+Done : exit / Cleanup
+Done --> [*]
+
+@enduml
