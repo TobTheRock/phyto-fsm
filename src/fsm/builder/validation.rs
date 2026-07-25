@@ -79,9 +79,10 @@ pub fn injective_action_mapping(arena: &ScopedArena<StateData>) -> Result<()> {
 
 pub fn no_conflicting_transitions(arena: &ScopedArena<StateData>) -> Result<()> {
     for_each_transition_group(arena, |state_name, event, guards| {
-        let has_guards = guards.len() > 1;
-        let all_transitions_guarded = guards.iter().all(|g| g.is_some());
-        if has_guards && !all_transitions_guarded {
+        // A guarded set may carry one unguarded default (the "else" branch, tried last); two or
+        // more unguarded transitions on the same event are genuinely ambiguous.
+        let unguarded = guards.iter().filter(|g| g.is_none()).count();
+        if unguarded > 1 {
             return Err(BuildError::ConflictingTransitions {
                 state: state_name.to_string(),
                 event: event.clone(),

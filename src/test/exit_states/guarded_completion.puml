@@ -8,9 +8,11 @@ state Working {
     Idle --> [*] : Finish
 }
 
-' Guarded completion transitions: the substate exit fans out over both
+' Guarded completion transitions: the substate exit fans out over all three.
+' The unguarded branch is the default, taken when every guard fails; keep it last.
 Working --> Recharge : [LowBattery] / Cleanup
 Working --> Done : [Ok]
+Working --> Standby
 
 Done --> [*] : Shutdown
 

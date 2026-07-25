@@ -132,9 +132,10 @@ fn build_substate_exit_fsm() -> Result<UmlFsm> {
 }
 
 /// A substate exit fans out over guarded completion transitions: `Idle --> [*] : Finish` inside
-/// `Working` becomes both `Idle --Finish[LowBattery]--> Recharge / Cleanup` and
-/// `Idle --Finish[Ok]--> Done`, each carrying that completion's guard and effect. The consumed
-/// `Working --> ...` completions are dropped from the composite.
+/// `Working` becomes `Idle --Finish[LowBattery]--> Recharge / Cleanup`,
+/// `Idle --Finish[Ok]--> Done`, and the unguarded default `Idle --Finish--> Standby`, each carrying
+/// that completion's guard and effect. The consumed `Working --> ...` completions are dropped from
+/// the composite.
 fn build_guarded_completion_fsm() -> Result<UmlFsm> {
     let mut builder = UmlFsmBuilder::new("GuardedCompletion");
     builder.add_transition(TransitionParameters::Enter { target: "Working" });
@@ -169,6 +170,14 @@ fn build_guarded_completion_fsm() -> Result<UmlFsm> {
         target: "Done",
         action: None,
         guard: Some(Action::from("Ok")),
+    });
+    // Unguarded default completion: taken when every guard fails. Keep it last so the
+    // fanned-out event arm falls through to it only after the guarded branches.
+    builder.add_transition(TransitionParameters::Direct {
+        source: "Working",
+        target: "Standby",
+        action: None,
+        guard: None,
     });
     // Top-level exit: ends the FSM
     builder.add_transition(TransitionParameters::Final {

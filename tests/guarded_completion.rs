@@ -59,20 +59,19 @@ fn finish_takes_ok_completion_branch() {
         "the [Ok] completion target is taken, no Cleanup"
     );
 }
-// TODO: allow mixing with unguarded branches
-// #[test]
-// fn finish_falls_back_to_unguarded_completion_branch() {
-//     let mut actions = MockGuardedCompletionActions::new();
-//     actions.expect_low_battery().returning(|_| false);
-//     actions.expect_ok().returning(|_| false);
-//     actions.expect_cleanup().never();
-//
-//     let mut fsm = guarded_completion::start(actions);
-//     fsm.pause(());
-//     fsm.finish(());
-//     assert_eq!(
-//         fsm.active_state(),
-//         Some(guarded_completion::GuardedCompletionState::Standby),
-//         "both guards fail, so the unguarded default completion is taken"
-//     );
-// }
+#[test]
+fn finish_falls_back_to_unguarded_completion_branch() {
+    let mut actions = MockGuardedCompletionActions::new();
+    actions.expect_low_battery().returning(|_| false);
+    actions.expect_ok().returning(|_| false);
+    actions.expect_cleanup().never();
+
+    let mut fsm = guarded_completion::start(actions);
+    fsm.pause(());
+    fsm.finish(());
+    assert_eq!(
+        fsm.active_state(),
+        Some(guarded_completion::GuardedCompletionState::Standby),
+        "both guards fail, so the unguarded default completion is taken"
+    );
+}

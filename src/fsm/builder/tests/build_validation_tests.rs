@@ -93,7 +93,9 @@ fn build_with_guarded_conflicting_transitions_succeeds() {
 }
 
 #[test]
-fn build_with_partially_guarded_conflicting_transitions_fails() {
+fn build_with_guarded_and_unguarded_default_succeeds() {
+    // A guarded transition plus one unguarded "else" branch is deterministic: the guard is tried
+    // first, the default catches the rest.
     let mut builder = UmlFsmBuilder::new("TestFSM");
     builder.add_transition(TransitionParameters::Enter { target: "A" });
     builder.add_transition(TransitionParameters::Event {
@@ -111,7 +113,7 @@ fn build_with_partially_guarded_conflicting_transitions_fails() {
         guard: None,
     });
     let result = builder.build();
-    assert!(result.is_err());
+    assert!(result.is_ok());
 }
 
 #[test]
