@@ -1,0 +1,17 @@
+@startuml GuardedCompletion
+
+[*] --> Working
+
+state Working {
+    [*] --> Busy
+    Busy --> Idle : Pause
+    Idle --> [*] : Finish
+}
+
+' Guarded completion transitions: the substate exit fans out over both
+Working --> Recharge : [LowBattery] / Cleanup
+Working --> Done : [Ok]
+
+Done --> [*] : Shutdown
+
+@enduml

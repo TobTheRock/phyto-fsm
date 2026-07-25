@@ -8,65 +8,68 @@ use crate::fsm::model::{StateData, TransitionData};
 use crate::fsm::types::Event;
 
 /// Redirects each substate `Sub --> [*]` (a parented `Final`) onto its parent composite's
-/// completion target, so a completed region fires `Parent --> Target` instead of terminating the
-/// FSM. A top-level `[*]` (a root `Final`) is left alone. The precondition — every such parent
-/// has a completion target — is checked by [`validation::substate_exits_have_completion`], so
-/// parents without one simply carry no substate exits to redirect here.
-///
-/// [`validation::substate_exits_have_completion`]: super::validation::substate_exits_have_completion
+/// completion transitions, so a completed region hands off via `Parent --> X` instead of
+/// terminating the FSM. The exit *fans out* over every completion, keeping its own trigger event
+/// but taking each completion's target, effect, and guard. A top-level `[*]` (a root `Final`) is
+/// left alone.
 pub fn redirect_substate_exits(arena: &mut ScopedArena<StateData>) {
     let mut rewrites = Vec::new();
+    let mut consumed_parents = HashSet::new();
     for id in arena.node_ids() {
         let Some(parent) = arena[id].parent() else {
             continue; // top-level `[*]` genuinely terminates
         };
-        for (index, transition) in arena[id].get().transitions.iter().enumerate() {
-            if let Some(completion) = completion_transition(transition, arena[parent].get()) {
-                rewrites.push((id, index, completion));
-            }
-        }
+        let Some(redirected) = redirect_node(arena[id].get(), arena[parent].get()) else {
+            continue;
+        };
+        rewrites.push((id, redirected));
+        consumed_parents.insert(parent);
     }
-    for (id, index, completion) in rewrites {
-        arena[id].get_mut().transitions[index] = completion;
+    for (id, transitions) in rewrites {
+        arena[id].get_mut().transitions = transitions;
+    }
+    for parent in consumed_parents {
+        drop_realized_completions(arena[parent].get_mut());
     }
 }
 
-/// The completion transition a substate exit becomes: a `Final` firing its region's handoff onto
-/// `parent`'s completion target. `Sub --> [*] : Ev` stays event-driven; an event-less
-/// `Sub --> [*]` becomes an autonomous (`Direct`) completion. Returns `None` for any non-`Final`
-/// transition (which is why the missing-target case is an `expect`, not a skip: only a real
-/// substate exit reaches it, and `substate_exits_have_completion` validated its target exists).
-fn completion_transition(
-    transition: &TransitionData,
-    parent: &StateData,
-) -> Option<TransitionData> {
-    let TransitionData::Final {
-        source,
-        event,
-        action,
-        guard,
-    } = transition
-    else {
+fn redirect_node(node: &StateData, parent: &StateData) -> Option<Vec<TransitionData>> {
+    if !node.transitions.iter().any(is_substate_exit) {
         return None;
+    }
+    Some(
+        node.transitions
+            .iter()
+            .flat_map(|transition| redirect_transition(transition, parent))
+            .collect(),
+    )
+}
+
+fn drop_realized_completions(parent: &mut StateData) {
+    parent
+        .transitions
+        .retain(|t| !matches!(t, TransitionData::Direct { .. }));
+}
+
+fn is_substate_exit(transition: &TransitionData) -> bool {
+    matches!(transition, TransitionData::Final { .. })
+}
+
+/// A substate exit fanned out to one transition per parent completion; any other transition passes
+/// through unchanged.
+fn redirect_transition(transition: &TransitionData, parent: &StateData) -> Vec<TransitionData> {
+    let TransitionData::Final { source, event, .. } = transition else {
+        return vec![transition.clone()];
     };
-    let target = parent
-        .completion_target()
-        .expect("substate exit implies a parent completion target");
-    Some(match event {
-        Some(event) => TransitionData::Event {
-            source: *source,
-            event: event.clone(),
-            target,
-            action: action.clone(),
-            guard: guard.clone(),
-        },
-        None => TransitionData::Direct {
-            source: *source,
-            target,
-            action: action.clone(),
-            guard: guard.clone(),
-        },
-    })
+    let redirected: Vec<_> = parent
+        .completion_transitions()
+        .map(|c| c.redirect(*source, event.clone()))
+        .collect();
+    assert!(
+        !redirected.is_empty(),
+        "substate exit implies a parent completion transition"
+    );
+    redirected
 }
 
 pub fn extract_deferred_events(arena: &mut ScopedArena<StateData>) {

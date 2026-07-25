@@ -32,7 +32,13 @@ pub fn substate_exits_have_completion(arena: &ScopedArena<StateData>) -> Result<
             .transitions
             .iter()
             .any(|t| matches!(t, TransitionData::Final { .. }));
-        if has_substate_exit && arena[parent].get().completion_target().is_none() {
+        if has_substate_exit
+            && arena[parent]
+                .get()
+                .completion_transitions()
+                .next()
+                .is_none()
+        {
             return Err(BuildError::SubstateExitWithoutCompletion {
                 composite: arena[parent].get().name.clone(),
             }

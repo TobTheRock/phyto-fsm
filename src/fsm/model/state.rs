@@ -13,6 +13,32 @@ pub struct StateData {
     pub deferred_events: Vec<Event>,
 }
 
+/// A composite's event-less `Direct` transition, fired when its region completes.
+pub struct CompletionTransition<'a> {
+    pub target: StateId,
+    pub action: Option<&'a Action>,
+    pub guard: Option<&'a Action>,
+}
+
+/// A completion is exactly a `Direct` transition; every other kind yields `None`.
+impl<'a> From<&'a TransitionData> for Option<CompletionTransition<'a>> {
+    fn from(transition: &'a TransitionData) -> Self {
+        match transition {
+            TransitionData::Direct {
+                target,
+                action,
+                guard,
+                ..
+            } => Some(CompletionTransition {
+                target: *target,
+                action: action.as_ref(),
+                guard: guard.as_ref(),
+            }),
+            _ => None,
+        }
+    }
+}
+
 impl StateData {
     /// Whether this state is the initial state of its scope (owns an [`Enter`] transition).
     ///
@@ -23,21 +49,11 @@ impl StateData {
             .any(|t| matches!(t, TransitionData::Enter { .. }))
     }
 
-    /// The state this composite hands off to once its region completes: the target of its first
-    /// unguarded `Direct` (`Parent --> Target`) completion transition, or `None` if it has none.
-    ///
-    // TODO(guarded-completion): honors only the first unguarded completion, dropping its effect
-    // and ignoring guarded alternatives (`Parent --[g]--> X`). Multiple *unguarded* completions
-    // are already rejected as conflicts; add guarded/effectful completion when a puml needs it.
-    pub fn completion_target(&self) -> Option<StateId> {
-        self.transitions.iter().find_map(|t| match t {
-            TransitionData::Direct {
-                target,
-                guard: None,
-                ..
-            } => Some(*target),
-            _ => None,
-        })
+    /// This composite's completion transitions: its event-less `Direct` transitions
+    /// (`Parent --> X`, guarded or not), each a handoff fired when the region completes. A substate
+    /// exit fans out over all of them (see `redirect_substate_exits`).
+    pub fn completion_transitions(&self) -> impl Iterator<Item = CompletionTransition<'_>> {
+        self.transitions.iter().filter_map(Option::from)
     }
 }
 

@@ -1,7 +1,7 @@
 use crate::fsm::types::{Action, Event};
 
 use super::StateId;
-use super::state::{State, StateData};
+use super::state::{CompletionTransition, State, StateData};
 
 #[derive(Debug, Clone)]
 pub enum TransitionKind<S, E, A> {
@@ -89,6 +89,34 @@ impl TransitionData {
             | TransitionData::Direct { guard, .. }
             | TransitionData::Final { guard, .. } => guard.as_ref(),
             TransitionData::Enter { .. } => None,
+        }
+    }
+}
+
+impl CompletionTransition<'_> {
+    /// Redirects this parent completion onto a substate exit: keeps the exit's `source` and trigger
+    /// while adopting the completion's target/effect/guard. `event: Some` yields an event-driven
+    /// `Event`, a bare completion (`event: None`) yields a `Direct`.
+    pub fn redirect(self, source: StateId, event: Option<Event>) -> TransitionData {
+        let CompletionTransition {
+            target,
+            action,
+            guard,
+        } = self;
+        match event {
+            Some(event) => TransitionData::Event {
+                source,
+                event,
+                target,
+                action: action.cloned(),
+                guard: guard.cloned(),
+            },
+            None => TransitionData::Direct {
+                source,
+                target,
+                action: action.cloned(),
+                guard: guard.cloned(),
+            },
         }
     }
 }

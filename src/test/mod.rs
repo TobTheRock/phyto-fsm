@@ -38,6 +38,7 @@ impl FsmTestData {
             Self::composite_exit(),
             Self::completion_exit(),
             Self::substate_exit(),
+            Self::guarded_completion(),
             Self::four_seasons(),
             Self::misc(),
             Self::guards(),

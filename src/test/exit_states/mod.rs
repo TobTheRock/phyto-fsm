@@ -131,6 +131,56 @@ fn build_substate_exit_fsm() -> Result<UmlFsm> {
     builder.build()
 }
 
+/// A substate exit fans out over guarded completion transitions: `Idle --> [*] : Finish` inside
+/// `Working` becomes both `Idle --Finish[LowBattery]--> Recharge / Cleanup` and
+/// `Idle --Finish[Ok]--> Done`, each carrying that completion's guard and effect. The consumed
+/// `Working --> ...` completions are dropped from the composite.
+fn build_guarded_completion_fsm() -> Result<UmlFsm> {
+    let mut builder = UmlFsmBuilder::new("GuardedCompletion");
+    builder.add_transition(TransitionParameters::Enter { target: "Working" });
+    let working = builder.add_state("Working");
+
+    builder.set_scope(Some(working));
+    builder.add_transition(TransitionParameters::Enter { target: "Busy" });
+    builder.add_transition(TransitionParameters::Event {
+        source: "Busy",
+        target: "Idle",
+        event: Event("Pause".into()),
+        action: None,
+        guard: None,
+    });
+    builder.add_transition(TransitionParameters::Final {
+        source: "Idle",
+        event: Some(Event("Finish".into())),
+        action: None,
+        guard: None,
+    });
+    builder.set_scope(None);
+
+    // Guarded completion transitions Working fans out over
+    builder.add_transition(TransitionParameters::Direct {
+        source: "Working",
+        target: "Recharge",
+        action: Some(Action::from("Cleanup")),
+        guard: Some(Action::from("LowBattery")),
+    });
+    builder.add_transition(TransitionParameters::Direct {
+        source: "Working",
+        target: "Done",
+        action: None,
+        guard: Some(Action::from("Ok")),
+    });
+    // Top-level exit: ends the FSM
+    builder.add_transition(TransitionParameters::Final {
+        source: "Done",
+        event: Some(Event("Shutdown".into())),
+        action: None,
+        guard: None,
+    });
+
+    builder.build()
+}
+
 impl FsmTestData {
     pub fn exit_states() -> Self {
         let path = get_adjacent_file_path(file!(), "exit_states.puml");
@@ -168,6 +218,16 @@ impl FsmTestData {
             name: "substate_exit",
             content: include_str!("./substate_exit.puml"),
             parsed: build_substate_exit_fsm().expect("Failed to create expected FSM"),
+            path,
+        }
+    }
+
+    pub fn guarded_completion() -> Self {
+        let path = get_adjacent_file_path(file!(), "guarded_completion.puml");
+        Self {
+            name: "guarded_completion",
+            content: include_str!("./guarded_completion.puml"),
+            parsed: build_guarded_completion_fsm().expect("Failed to create expected FSM"),
             path,
         }
     }

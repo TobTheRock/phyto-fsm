@@ -115,6 +115,30 @@ fn build_with_partially_guarded_conflicting_transitions_fails() {
 }
 
 #[test]
+fn build_with_substate_exit_but_no_completion_fails() {
+    let mut builder = UmlFsmBuilder::new("TestFSM");
+    builder.add_transition(TransitionParameters::Enter { target: "Working" });
+    let working = builder.add_state("Working");
+
+    builder.set_scope(Some(working));
+    builder.add_transition(TransitionParameters::Enter { target: "Busy" });
+    // `Busy` exits its region to `[*]`, but `Working` has no completion transition to redirect onto.
+    builder.add_transition(TransitionParameters::Final {
+        source: "Busy",
+        event: Some("Finish".into()),
+        action: None,
+        guard: None,
+    });
+    builder.set_scope(None);
+
+    let err = builder.build().unwrap_err();
+    assert!(
+        err.to_string().contains("no completion transition"),
+        "expected SubstateExitWithoutCompletion, got: {err}"
+    );
+}
+
+#[test]
 fn build_with_duplicate_guards_per_event_fails() {
     let mut builder = UmlFsmBuilder::new("TestFSM");
     builder.add_transition(TransitionParameters::Enter { target: "A" });
