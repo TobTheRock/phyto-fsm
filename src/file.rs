@@ -1,5 +1,8 @@
 use crate::error;
 
+/// The textual content of a PlantUML source file, as handed to the parser.
+pub type FileContent = str;
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FilePath(std::path::PathBuf);
 
@@ -61,7 +64,7 @@ impl File {
         Ok(Self { content })
     }
 
-    pub fn content(&self) -> &str {
+    pub fn content(&self) -> &FileContent {
         &self.content
     }
 }

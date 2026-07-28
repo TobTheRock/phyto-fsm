@@ -7,6 +7,7 @@ mod deferred_events;
 mod exit_states;
 mod four_seasons;
 mod misc;
+pub mod submachine;
 mod transitions;
 mod utils;
 

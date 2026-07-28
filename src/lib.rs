@@ -42,7 +42,21 @@ fn generate_fsm_inner(input: TokenStream) -> error::Result<TokenStream> {
         syn::parse(input).map_err(|e| error::Error::InvalidInput(e.to_string()))?;
     let file_path = file::FilePath::resolve(&options.file_path, proc_macro::Span::call_site());
     let file = file::File::try_open(file_path)?;
-    let parsed_fsm = fsm::UmlFsm::try_parse(file.content())?;
+
+    let parsed_fsm = if options.sub_fsms.is_empty() {
+        fsm::UmlFsm::try_parse(file.content())?
+    } else {
+        let sub_files = options
+            .sub_fsms
+            .iter()
+            .map(|path| {
+                let fp = file::FilePath::resolve(path, proc_macro::Span::call_site());
+                file::File::try_open(fp)
+            })
+            .collect::<error::Result<Vec<_>>>()?;
+        let sub_contents: Vec<&str> = sub_files.iter().map(|f| f.content()).collect();
+        fsm::UmlFsm::try_parse_with_subs(file.content(), &sub_contents)?
+    };
 
     let naming_file = options
         .naming_path

@@ -1,0 +1,10 @@
+@startuml Submachine
+
+' UML submachine state: `Active` references the `Worker` machine (defined in worker.puml)
+state Active : Worker
+
+[*] --> Idle
+Idle --> Active : Start
+Active --> Idle : Stop
+
+@enduml

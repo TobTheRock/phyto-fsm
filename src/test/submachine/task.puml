@@ -1,0 +1,6 @@
+@startuml Task
+
+[*] --> Running
+Running --> Complete : Finish / HandleFinish
+
+@enduml

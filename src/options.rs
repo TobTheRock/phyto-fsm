@@ -6,6 +6,7 @@ use syn::{
 
 pub struct Options {
     pub file_path: String,
+    pub sub_fsms: Vec<String>,
     pub naming_path: Option<String>,
     pub log_level: Option<log::Level>,
 }
@@ -18,6 +19,7 @@ impl Options {
         }
         Ok(Self {
             file_path,
+            sub_fsms: Vec::new(),
             naming_path: None,
             log_level: None,
         })
@@ -74,8 +76,27 @@ impl Options {
                 syn::Error::new(input.span(), "Expected at most one 'naming' key in options")
             })?;
 
+        let sub_fsms: Vec<String> = parsed_pairs
+            .iter()
+            .filter_map(|pair| {
+                if let OptionKeyValue::SubFsms(paths) = pair {
+                    Some(paths.clone())
+                } else {
+                    None
+                }
+            })
+            .at_most_one()
+            .map_err(|_| {
+                syn::Error::new(
+                    input.span(),
+                    "Expected at most one 'sub_fsms' key in options",
+                )
+            })?
+            .unwrap_or_default();
+
         Ok(Self {
             file_path: file_path.clone(),
+            sub_fsms,
             naming_path,
             log_level,
         })
@@ -99,6 +120,7 @@ impl Parse for Options {
 
 enum OptionKeyValue {
     FilePath(String),
+    SubFsms(Vec<String>),
     LogLevel(log::Level),
     Naming(String),
 }
@@ -115,6 +137,17 @@ impl Parse for OptionKeyValue {
                     return Err(syn::Error::new(lit.span(), "File path cannot be empty"));
                 }
                 Ok(OptionKeyValue::FilePath(file_path))
+            }
+            "sub_fsms" => {
+                let content;
+                syn::bracketed!(content in input);
+                let paths =
+                    syn::punctuated::Punctuated::<LitStr, syn::Token![,]>::parse_terminated(
+                        &content,
+                    )?;
+                Ok(OptionKeyValue::SubFsms(
+                    paths.iter().map(|lit| lit.value()).collect(),
+                ))
             }
             "log_level" => {
                 let lit: LitStr = input.parse()?;
@@ -135,7 +168,7 @@ impl Parse for OptionKeyValue {
             }
             _ => Err(syn::Error::new(
                 key.span(),
-                "Unknown option key. Expected 'file_path', 'log_level', or 'naming'",
+                "Unknown option key. Expected 'file_path', 'sub_fsms', 'log_level', or 'naming'",
             )),
         }
     }

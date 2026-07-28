@@ -1,0 +1,9 @@
+@startuml Worker
+
+' `Working` is itself a submachine, referencing the `Task` machine (task.puml):
+' Submachine -> Worker -> Task is two levels of inclusion.
+state Working : Task
+
+[*] --> Working
+
+@enduml

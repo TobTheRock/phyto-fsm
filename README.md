@@ -28,6 +28,7 @@ This way the design of the FSM is easy to grasp first hand and documentation and
 | Actions on transitions | Execute custom code when transitions occur | [actions.rs](https://github.com/TobTheRock/phytofsm/blob/main/tests/actions.rs) |
 | Enter/exit actions | Execute custom code when entering or exiting a state | [enter_exit.rs](https://github.com/TobTheRock/phytofsm/blob/main/tests/enter_exit.rs) |
 | Composite states | Nested/hierarchical states with automatic enter state resolution | [composite_states.rs](https://github.com/TobTheRock/phytofsm/blob/main/tests/composite_states.rs) |
+| Submachines | Reference another FSM (its own `.puml` file) from a state, nestable to any depth | [submachine.rs](https://github.com/TobTheRock/phytofsm/blob/main/tests/submachine.rs) |
 | Substate-to-substate transitions | Transitions between substates across different parent states | [substate_to_substate.rs](https://github.com/TobTheRock/phytofsm/blob/main/tests/substate_to_substate.rs) |
 | Self-transitions | States that transition to themselves | [transitions.rs](https://github.com/TobTheRock/phytofsm/blob/main/tests/transitions.rs) |
 | Alternative transitions | Multiple transitions from the same state with different events | [transitions.rs](https://github.com/TobTheRock/phytofsm/blob/main/tests/transitions.rs) |
@@ -45,7 +46,6 @@ This way the design of the FSM is easy to grasp first hand and documentation and
 - Pseudo States
   - history states
   - ...
-- sub state machines
 - orthogonal regions
 
 ## UML Syntax for FSM Actions & Events
@@ -186,6 +186,27 @@ Working --> Recharge : [LowBattery] / Cleanup
 Working --> Done : [Ok]
 Working --> Standby
 ```
+
+### Submachines
+
+A state can reference an entire FSM defined in a separate `.puml` file, using the UML submachine syntax `state Name : MachineName`:
+
+```puml
+state Active : Worker
+```
+
+Entering `Active` enters the `Worker` machine at its initial state; leaving `Active` tears it down. Submachines nest to any depth — a referenced machine may itself reference another.
+
+The referenced files are passed to the macro via the `sub_fsms` option:
+
+```rust,ignore
+generate_fsm!(
+    file_path = "submachine.puml",
+    sub_fsms = ["worker.puml", "task.puml"],
+);
+```
+
+Submachine events and actions flow through the same generated actions trait as the top-level machine, so you implement them all in one place. See [submachine.rs](https://github.com/TobTheRock/phytofsm/blob/main/tests/submachine.rs) for a two-level example.
 
 ### Deferred Events
 
