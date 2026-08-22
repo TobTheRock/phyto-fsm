@@ -1,8 +1,6 @@
 use std::collections::HashMap;
 
 use heck::{ToSnakeCase, ToUpperCamelCase};
-use serde::Serialize;
-use tinytemplate::TinyTemplate;
 
 use crate::file;
 
@@ -22,8 +20,6 @@ pub enum NamingError {
     MissingKey(String),
     #[error("Unknown key: {0}")]
     UnknownKey(String),
-    #[error("Template rendering failed: {0}")]
-    RenderError(String),
 }
 
 impl From<NamingError> for crate::error::Error {
@@ -46,11 +42,6 @@ pub struct NamingTemplate<'a> {
     content: &'a str,
 }
 
-#[derive(Serialize)]
-struct TemplateContext {
-    name: String,
-}
-
 impl Default for NamingTemplate<'static> {
     fn default() -> Self {
         Self {
@@ -69,13 +60,9 @@ impl<'a> From<&'a file::File> for NamingTemplate<'a> {
 
 impl NamingTemplate<'_> {
     pub fn render(&self, name: &str) -> Result<RenderedNames, NamingError> {
-        let context = TemplateContext {
-            name: name.to_upper_camel_case(),
-        };
-
         let entries = self.parse_entries()?;
         self.validate_keys(&entries)?;
-        self.render_entries(&entries, &context)
+        Ok(Self::render_entries(&entries, &name.to_upper_camel_case()))
     }
 
     fn parse_entries(&self) -> Result<HashMap<String, String>, NamingError> {
@@ -113,26 +100,16 @@ impl NamingTemplate<'_> {
         Ok(())
     }
 
-    fn render_entries(
-        &self,
-        entries: &HashMap<String, String>,
-        context: &TemplateContext,
-    ) -> Result<RenderedNames, NamingError> {
-        let render_value = |value: &str| -> Result<String, NamingError> {
-            let mut tt = TinyTemplate::new();
-            tt.add_template("value", value)
-                .map_err(|e| NamingError::RenderError(e.to_string()))?;
-            tt.render("value", context)
-                .map_err(|e| NamingError::RenderError(e.to_string()))
-        };
+    fn render_entries(entries: &HashMap<String, String>, name: &str) -> RenderedNames {
+        let render_value = |key: &str| entries[key].replace("{name}", name);
 
-        Ok(RenderedNames {
-            fsm: render_value(&entries["fsm"])?,
-            module: render_value(&entries["module"])?.to_snake_case(),
-            event_params_trait: render_value(&entries["event_params_trait"])?,
-            action_trait: render_value(&entries["action_trait"])?,
-            state_id_enum: render_value(&entries["state_id_enum"])?,
-        })
+        RenderedNames {
+            fsm: render_value("fsm"),
+            module: render_value("module").to_snake_case(),
+            event_params_trait: render_value("event_params_trait"),
+            action_trait: render_value("action_trait"),
+            state_id_enum: render_value("state_id_enum"),
+        }
     }
 }
 
@@ -203,6 +180,19 @@ state_id_enum = {name}StateId
         assert_eq!(names.event_params_trait, "IMyFsmEventParams");
         assert_eq!(names.action_trait, "IMyFsmActions");
         assert_eq!(names.state_id_enum, "MyFsmState");
+    }
+
+    #[test]
+    fn every_name_placeholder_is_substituted() {
+        let repeated = "\
+fsm = {name}{name}
+module = {name}
+event_params_trait = I{name}EventParams
+action_trait = I{name}Actions
+state_id_enum = {name}StateId";
+        let template = NamingTemplate { content: repeated };
+        let names = template.render("Foo").unwrap();
+        assert_eq!(names.fsm, "FooFoo");
     }
 
     #[test]
