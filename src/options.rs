@@ -1,4 +1,3 @@
-use itertools::Itertools;
 use syn::{
     LitStr,
     parse::{Parse, ParseStream},
@@ -13,12 +12,8 @@ pub struct Options {
 
 impl Options {
     fn try_from_file_path(lit: &LitStr) -> syn::Result<Self> {
-        let file_path = lit.value();
-        if file_path.trim().is_empty() {
-            return Err(syn::Error::new(lit.span(), "File path cannot be empty"));
-        }
         Ok(Self {
-            file_path,
+            file_path: parse_non_empty(lit, "File path")?,
             sub_fsms: Vec::new(),
             naming_path: None,
             log_level: None,
@@ -28,79 +23,47 @@ impl Options {
     fn try_from_key_value_pairs(input: ParseStream) -> syn::Result<Self> {
         let parsed_pairs =
             syn::punctuated::Punctuated::<OptionKeyValue, syn::Token![,]>::parse_terminated(input)?;
-        let file_path = parsed_pairs
-            .iter()
-            .filter_map(|pair| {
-                if let OptionKeyValue::FilePath(path) = pair {
-                    Some(path)
-                } else {
-                    None
-                }
-            })
-            .exactly_one()
-            .map_err(|_| {
-                syn::Error::new(
-                    input.span(),
-                    "Expected exactly one 'file_path' key in options",
-                )
-            })?;
 
-        let log_level = parsed_pairs
-            .iter()
-            .filter_map(|pair| {
-                if let OptionKeyValue::LogLevel(level) = pair {
-                    Some(*level)
-                } else {
-                    None
-                }
-            })
-            .at_most_one()
-            .map_err(|_| {
-                syn::Error::new(
-                    input.span(),
-                    "Expected at most one 'log_level' key in options",
-                )
-            })?;
+        let mut file_path = None;
+        let mut sub_fsms = None;
+        let mut naming_path = None;
+        let mut log_level = None;
 
-        let naming_path: Option<String> = parsed_pairs
-            .iter()
-            .filter_map(|pair| {
-                if let OptionKeyValue::Naming(path) = pair {
-                    Some(path.clone())
-                } else {
-                    None
-                }
-            })
-            .at_most_one()
-            .map_err(|_| {
-                syn::Error::new(input.span(), "Expected at most one 'naming' key in options")
-            })?;
-
-        let sub_fsms: Vec<String> = parsed_pairs
-            .iter()
-            .filter_map(|pair| {
-                if let OptionKeyValue::SubFsms(paths) = pair {
-                    Some(paths.clone())
-                } else {
-                    None
-                }
-            })
-            .at_most_one()
-            .map_err(|_| {
-                syn::Error::new(
+        for pair in parsed_pairs {
+            let (key, was_set) = match pair {
+                OptionKeyValue::FilePath(path) => ("file_path", file_path.replace(path).is_some()),
+                OptionKeyValue::SubFsms(paths) => ("sub_fsms", sub_fsms.replace(paths).is_some()),
+                OptionKeyValue::Naming(path) => ("naming", naming_path.replace(path).is_some()),
+                OptionKeyValue::LogLevel(level) => ("log_level", log_level.replace(level).is_some()),
+            };
+            if was_set {
+                return Err(syn::Error::new(
                     input.span(),
-                    "Expected at most one 'sub_fsms' key in options",
-                )
-            })?
-            .unwrap_or_default();
+                    format!("Expected at most one '{key}' key in options"),
+                ));
+            }
+        }
 
         Ok(Self {
-            file_path: file_path.clone(),
-            sub_fsms,
+            file_path: file_path.ok_or_else(|| {
+                syn::Error::new(input.span(), "Expected a 'file_path' key in options")
+            })?,
+            sub_fsms: sub_fsms.unwrap_or_default(),
             naming_path,
             log_level,
         })
     }
+}
+
+fn parse_non_empty(lit: &LitStr, what: &str) -> syn::Result<String> {
+    let value = lit.value();
+    if value.trim().is_empty() {
+        return Err(syn::Error::new(
+            lit.span(),
+            format!("{what} cannot be empty"),
+        ));
+    }
+    Ok(value)
 }
 
 impl Parse for Options {
@@ -130,14 +93,10 @@ impl Parse for OptionKeyValue {
         let key: syn::Ident = input.parse()?;
         input.parse::<syn::Token![=]>()?;
         match key.to_string().as_str() {
-            "file_path" => {
-                let lit: LitStr = input.parse()?;
-                let file_path = lit.value();
-                if file_path.trim().is_empty() {
-                    return Err(syn::Error::new(lit.span(), "File path cannot be empty"));
-                }
-                Ok(OptionKeyValue::FilePath(file_path))
-            }
+            "file_path" => Ok(OptionKeyValue::FilePath(parse_non_empty(
+                &input.parse()?,
+                "File path",
+            )?)),
             "sub_fsms" => {
                 let content;
                 syn::bracketed!(content in input);
@@ -155,17 +114,10 @@ impl Parse for OptionKeyValue {
                 let log_level = parse_log_level(&level_str, lit.span())?;
                 Ok(OptionKeyValue::LogLevel(log_level))
             }
-            "naming" => {
-                let lit: LitStr = input.parse()?;
-                let value = lit.value();
-                if value.trim().is_empty() {
-                    return Err(syn::Error::new(
-                        lit.span(),
-                        "Naming template path cannot be empty",
-                    ));
-                }
-                Ok(OptionKeyValue::Naming(value))
-            }
+            "naming" => Ok(OptionKeyValue::Naming(parse_non_empty(
+                &input.parse()?,
+                "Naming template path",
+            )?)),
             _ => Err(syn::Error::new(
                 key.span(),
                 "Unknown option key. Expected 'file_path', 'sub_fsms', 'log_level', or 'naming'",
@@ -239,6 +191,49 @@ mod test {
         );
         let result = Options::parse.parse2(tokens);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn error_on_duplicate_optional_keys() {
+        let duplicates = [
+            quote::quote!(
+                file_path = "fsm.puml",
+                log_level = "error",
+                log_level = "warn"
+            ),
+            quote::quote!(
+                file_path = "fsm.puml",
+                naming = "a.tmpl",
+                naming = "b.tmpl"
+            ),
+            quote::quote!(
+                file_path = "fsm.puml",
+                sub_fsms = ["a.puml"],
+                sub_fsms = ["b.puml"]
+            ),
+        ];
+        for tokens in duplicates {
+            assert!(Options::parse.parse2(tokens).is_err());
+        }
+    }
+
+    #[test]
+    fn error_on_missing_file_path() {
+        let tokens = quote::quote!(log_level = "error");
+        assert!(Options::parse.parse2(tokens).is_err());
+    }
+
+    #[test]
+    fn error_on_empty_naming_path() {
+        let tokens = quote::quote!(file_path = "fsm.puml", naming = "   ");
+        assert!(Options::parse.parse2(tokens).is_err());
+    }
+
+    #[test]
+    fn parse_sub_fsms() {
+        let tokens = quote::quote!(file_path = "fsm.puml", sub_fsms = ["a.puml", "b.puml"]);
+        let options = Options::parse.parse2(tokens).unwrap();
+        assert_eq!(options.sub_fsms, ["a.puml", "b.puml"]);
     }
 
     #[test]
