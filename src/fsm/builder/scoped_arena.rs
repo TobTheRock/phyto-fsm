@@ -72,26 +72,11 @@ impl<T> ScopedArena<T> {
             .filter_map(|node| self.arena.get_node_id(node))
     }
 
-    /// Returns an iterator over all nodes in the arena.
-    pub fn iter(&self) -> impl Iterator<Item = &Node<T>> {
-        self.arena.iter()
-    }
-
     /// Returns an iterator over all node ids
     pub fn node_ids(&self) -> impl Iterator<Item = NodeId> {
         self.arena
             .iter()
             .filter_map(|node| self.arena.get_node_id(node))
-    }
-
-    /// Returns the node ID for a given node reference.
-    pub fn get_node_id(&self, node: &Node<T>) -> Option<NodeId> {
-        self.arena.get_node_id(node)
-    }
-
-    /// Returns an iterator over all ancestors of a node
-    pub fn ancestors(&self, node_id: NodeId) -> impl Iterator<Item = NodeId> + '_ {
-        node_id.ancestors(&self.arena)
     }
 
     /// Consumes the ScopedArena and returns the underlying Arena.
@@ -100,16 +85,18 @@ impl<T> ScopedArena<T> {
     }
 }
 
-impl<T> std::ops::Index<NodeId> for ScopedArena<T> {
-    type Output = Node<T>;
+/// Everything that is not scope-aware — `iter`, `get_node_id`, indexing, and the `NodeId`
+/// traversals such as `ancestors` — comes straight from the wrapped [`Arena`].
+impl<T> std::ops::Deref for ScopedArena<T> {
+    type Target = Arena<T>;
 
-    fn index(&self, index: NodeId) -> &Self::Output {
-        &self.arena[index]
+    fn deref(&self) -> &Self::Target {
+        &self.arena
     }
 }
 
-impl<T> std::ops::IndexMut<NodeId> for ScopedArena<T> {
-    fn index_mut(&mut self, index: NodeId) -> &mut Self::Output {
-        &mut self.arena[index]
+impl<T> std::ops::DerefMut for ScopedArena<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.arena
     }
 }

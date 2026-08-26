@@ -22,6 +22,17 @@ fn new_node_as_child_when_scoped() {
 }
 
 #[test]
+fn ancestors_start_at_the_node_itself() {
+    let mut arena: ScopedArena<&str> = ScopedArena::new();
+    let parent = arena.new_node_in_scope("parent");
+    arena.set_scope(Some(parent));
+    let child = arena.new_node_in_scope("child");
+
+    let names: Vec<_> = child.ancestors(&arena).map(|id| *arena[id].get()).collect();
+    assert_eq!(names, vec!["child", "parent"]);
+}
+
+#[test]
 fn set_scope_returns_previous() {
     let mut arena: ScopedArena<&str> = ScopedArena::new();
     let node1 = arena.new_node_in_scope("node1");

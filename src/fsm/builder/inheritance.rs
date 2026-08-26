@@ -95,8 +95,8 @@ fn ancestor_transition_events(
     arena: &ScopedArena<StateData>,
     node_id: NodeId,
 ) -> impl Iterator<Item = &Event> {
-    arena
-        .ancestors(node_id)
+    node_id
+        .ancestors(arena)
         .flat_map(|id| arena[id].get().transitions.iter())
         .filter_map(|t| t.event())
 }
@@ -105,7 +105,7 @@ fn ancestor_deferred_events(
     arena: &ScopedArena<StateData>,
     node_id: NodeId,
 ) -> impl Iterator<Item = &Event> {
-    arena
-        .ancestors(node_id)
+    node_id
+        .ancestors(arena)
         .flat_map(|id| arena[id].get().deferred_events.iter())
 }
