@@ -1,5 +1,3 @@
-use std::ops::{Deref, DerefMut};
-
 use crate::error::{Error, Result};
 
 use super::plantuml;
@@ -91,7 +89,10 @@ fn named_entry<'a>(
 /// An in-flight sub-FSM expansion. Holds the expanding sub-FSM's elements and pops it off the
 /// resolver's visiting stack on drop, so [`enter`](SubMachineResolver::enter)/leave stay balanced
 /// without a manual call. Derefs to the resolver so recursion can keep resolving nested refs.
+#[derive(derive_more::Deref, derive_more::DerefMut)]
 pub struct SubMachineGuard<'r, 'a> {
+    #[deref(forward)]
+    #[deref_mut(forward)]
     resolver: &'r mut SubMachineResolver<'a>,
     elements: &'a plantuml::StateElements<'a>,
 }
@@ -100,20 +101,6 @@ impl<'a> SubMachineGuard<'_, 'a> {
     /// The elements of the sub-FSM being expanded.
     pub fn elements(&self) -> &'a plantuml::StateElements<'a> {
         self.elements
-    }
-}
-
-impl<'a> Deref for SubMachineGuard<'_, 'a> {
-    type Target = SubMachineResolver<'a>;
-
-    fn deref(&self) -> &Self::Target {
-        self.resolver
-    }
-}
-
-impl DerefMut for SubMachineGuard<'_, '_> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        self.resolver
     }
 }
 

@@ -15,7 +15,7 @@ readme = "README.md"
 proc-macro = true
 
 [dependencies]
-derive_more = { version = "2.0", features = ["from", "into", "display"] }
+derive_more = { version = "2.0", features = ["from", "into", "display", "deref", "deref_mut"] }
 heck = "0.5"
 indextree = "4.7"
 itertools = "0.14"
