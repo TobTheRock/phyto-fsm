@@ -432,26 +432,19 @@ pub fn generate_fsm(ctx: &GenerationContext) -> proc_macro2::TokenStream {
         }
     });
 
-    let direct_transition_body = if let Some(log_level) = ctx.log_level {
+    let log_stmt = ctx.log_level.map(|log_level| {
         let level = log_level_token(log_level);
         let log_transition = format!("{}: {{}} -[direct]-> {{}}, entering {{}}", ctx.fsm.name());
         quote::quote! {
-            while let Some(transition_state) = self.current_state.direct_transition(&mut self.actions) {
-                let enter_state = transition_state.resolve_enter_state();
-                ::log::log!(#level, #log_transition,
-                    self.current_state,
-                    transition_state,
-                    enter_state
-                );
-                self.change_state(enter_state);
-            }
+            ::log::log!(#level, #log_transition, self.current_state, transition_state, enter_state);
         }
-    } else {
-        quote::quote! {
-            while let Some(transition_state) = self.current_state.direct_transition(&mut self.actions) {
-                let enter_state = transition_state.resolve_enter_state();
-                self.change_state(enter_state);
-            }
+    });
+
+    let direct_transition_body = quote::quote! {
+        while let Some(transition_state) = self.current_state.direct_transition(&mut self.actions) {
+            let enter_state = transition_state.resolve_enter_state();
+            #log_stmt
+            self.change_state(enter_state);
         }
     };
 
@@ -510,33 +503,32 @@ fn generate_trigger_event(ctx: &GenerationContext) -> proc_macro2::TokenStream {
     let action = &ctx.idents.action_trait;
     let event_enum = &ctx.idents.event_enum;
 
-    let event_body = if let Some(log_level) = ctx.log_level {
-        let level = log_level_token(log_level);
-        let log_transition = format! {"{}: {{}} -[{{}}]-> {{}}, entering {{}}", ctx.fsm.name()};
-        quote::quote! {
-            let event_name = format!("{}", event);
-            if let Some(transition_state) = self.current_state.transition(event, &mut self.actions) {
-                let enter_state = transition_state.resolve_enter_state();
-                ::log::log!(#level, #log_transition,
-                    self.current_state,
-                    event_name,
-                    transition_state,
-                    enter_state
-                );
-                self.change_state(enter_state);
-                return true;
-            }
-            false
+    // Two holes: the name must be captured before `transition` consumes the event, the log call
+    // needs the transition's outcome.
+    let (capture_event_name, log_stmt) = match ctx.log_level {
+        Some(log_level) => {
+            let level = log_level_token(log_level);
+            let log_transition = format!("{}: {{}} -[{{}}]-> {{}}, entering {{}}", ctx.fsm.name());
+            (
+                quote::quote! { let event_name = format!("{}", event); },
+                quote::quote! {
+                    ::log::log!(#level, #log_transition,
+                        self.current_state, event_name, transition_state, enter_state);
+                },
+            )
         }
-    } else {
-        quote::quote! {
-            if let Some(transition_state) = self.current_state.transition(event, &mut self.actions) {
-                let enter_state = transition_state.resolve_enter_state();
-                self.change_state(enter_state);
-                return true;
-            }
-            false
+        None => Default::default(),
+    };
+
+    let event_body = quote::quote! {
+        #capture_event_name
+        if let Some(transition_state) = self.current_state.transition(event, &mut self.actions) {
+            let enter_state = transition_state.resolve_enter_state();
+            #log_stmt
+            self.change_state(enter_state);
+            return true;
         }
+        false
     };
 
     let entry_point = &ctx.deferred.entry_point;
