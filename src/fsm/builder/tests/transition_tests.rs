@@ -57,8 +57,11 @@ fn add_transition() {
     let transitions: Vec<_> = fsm.transitions().collect();
     assert_eq!(transitions.len(), 1);
     assert_eq!(transitions[0].destination().unwrap().name(), "B");
-    assert_eq!(transitions[0].event(), Some(&Event::from("EventAB")));
-    assert_eq!(transitions[0].action(), Some(&"ActionAB".into()));
+    assert_eq!(
+        transitions[0].event().copied(),
+        Some(&Event::from("EventAB"))
+    );
+    assert_eq!(transitions[0].action().copied(), Some(&"ActionAB".into()));
 }
 
 #[test]
@@ -128,9 +131,12 @@ fn add_direct_transition() {
 
     let transitions: Vec<_> = fsm.transitions().collect();
     assert_eq!(transitions.len(), 1);
-    assert_eq!(transitions[0].event(), None);
+    assert_eq!(transitions[0].event().copied(), None);
     assert_eq!(transitions[0].destination().unwrap().name(), "B");
-    assert_eq!(transitions[0].action(), Some(&Action::from("DoSomething")));
+    assert_eq!(
+        transitions[0].action().copied(),
+        Some(&Action::from("DoSomething"))
+    );
 }
 
 #[test]

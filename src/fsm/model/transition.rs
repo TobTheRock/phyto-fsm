@@ -51,44 +51,45 @@ pub type TransitionData = TransitionKind<StateId, Event, Action>;
 /// Resolved view over a [`TransitionData`], with states looked up in the arena.
 pub type Transition<'a> = TransitionKind<State<'a>, &'a Event, &'a Action>;
 
-impl TransitionData {
-    pub fn source(&self) -> StateId {
+/// Accessors shared by every alias. On [`Transition`] the event/action/guard payloads are
+/// themselves references, so those callers `.copied()` to get back to a single `&`.
+impl<S: Copy, E, A> TransitionKind<S, E, A> {
+    /// `Enter` has no source; the target owns it, so it answers for both.
+    pub fn source(&self) -> S {
         match self {
-            TransitionData::Event { source, .. }
-            | TransitionData::Internal { source, .. }
-            | TransitionData::Direct { source, .. }
-            | TransitionData::Final { source, .. } => *source,
-            TransitionData::Enter { target } => *target,
+            Self::Event { source, .. }
+            | Self::Internal { source, .. }
+            | Self::Direct { source, .. }
+            | Self::Final { source, .. } => *source,
+            Self::Enter { target } => *target,
         }
     }
 
-    pub fn event(&self) -> Option<&Event> {
+    pub fn event(&self) -> Option<&E> {
         match self {
-            TransitionData::Event { event, .. } | TransitionData::Internal { event, .. } => {
-                Some(event)
-            }
-            TransitionData::Final { event, .. } => event.as_ref(),
-            TransitionData::Direct { .. } | TransitionData::Enter { .. } => None,
+            Self::Event { event, .. } | Self::Internal { event, .. } => Some(event),
+            Self::Final { event, .. } => event.as_ref(),
+            Self::Direct { .. } | Self::Enter { .. } => None,
         }
     }
 
-    pub fn action(&self) -> Option<&Action> {
+    pub fn action(&self) -> Option<&A> {
         match self {
-            TransitionData::Event { action, .. }
-            | TransitionData::Internal { action, .. }
-            | TransitionData::Direct { action, .. }
-            | TransitionData::Final { action, .. } => action.as_ref(),
-            TransitionData::Enter { .. } => None,
+            Self::Event { action, .. }
+            | Self::Internal { action, .. }
+            | Self::Direct { action, .. }
+            | Self::Final { action, .. } => action.as_ref(),
+            Self::Enter { .. } => None,
         }
     }
 
-    pub fn guard(&self) -> Option<&Action> {
+    pub fn guard(&self) -> Option<&A> {
         match self {
-            TransitionData::Event { guard, .. }
-            | TransitionData::Internal { guard, .. }
-            | TransitionData::Direct { guard, .. }
-            | TransitionData::Final { guard, .. } => guard.as_ref(),
-            TransitionData::Enter { .. } => None,
+            Self::Event { guard, .. }
+            | Self::Internal { guard, .. }
+            | Self::Direct { guard, .. }
+            | Self::Final { guard, .. } => guard.as_ref(),
+            Self::Enter { .. } => None,
         }
     }
 }
@@ -179,24 +180,6 @@ impl<'a> Transition<'a> {
         }
     }
 
-    pub fn source(&self) -> State<'a> {
-        match self {
-            Transition::Event { source, .. }
-            | Transition::Internal { source, .. }
-            | Transition::Direct { source, .. }
-            | Transition::Final { source, .. } => *source,
-            Transition::Enter { target } => *target,
-        }
-    }
-
-    pub fn event(&self) -> Option<&'a Event> {
-        match self {
-            Transition::Event { event, .. } | Transition::Internal { event, .. } => Some(event),
-            Transition::Final { event, .. } => *event,
-            Transition::Direct { .. } | Transition::Enter { .. } => None,
-        }
-    }
-
     /// `None` for internal and final transitions, which have no target state.
     pub fn destination(&self) -> Option<State<'a>> {
         match self {
@@ -204,26 +187,6 @@ impl<'a> Transition<'a> {
             Transition::Internal { .. } | Transition::Enter { .. } | Transition::Final { .. } => {
                 None
             }
-        }
-    }
-
-    pub fn action(&self) -> Option<&'a Action> {
-        match self {
-            Transition::Event { action, .. }
-            | Transition::Internal { action, .. }
-            | Transition::Direct { action, .. }
-            | Transition::Final { action, .. } => *action,
-            Transition::Enter { .. } => None,
-        }
-    }
-
-    pub fn guard(&self) -> Option<&'a Action> {
-        match self {
-            Transition::Event { guard, .. }
-            | Transition::Internal { guard, .. }
-            | Transition::Direct { guard, .. }
-            | Transition::Final { guard, .. } => *guard,
-            Transition::Enter { .. } => None,
         }
     }
 }

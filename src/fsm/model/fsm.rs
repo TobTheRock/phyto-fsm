@@ -159,8 +159,8 @@ fn transition_key(
     };
     (
         target,
-        t.event().cloned(),
-        t.action().cloned(),
-        t.guard().cloned(),
+        t.event().copied().cloned(),
+        t.action().copied().cloned(),
+        t.guard().copied().cloned(),
     )
 }
