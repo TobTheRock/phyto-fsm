@@ -66,11 +66,11 @@ impl fsm::State<'_> {
     }
 
     pub fn qualified_name(&self, separator: impl Into<String>) -> String {
-        use itertools::Itertools;
-        let names: Vec<_> = std::iter::successors(Some(*self), |next| next.parent())
+        let mut names: Vec<_> = std::iter::successors(Some(*self), |next| next.parent())
             .map(|s| s.name().to_string())
             .collect();
-        Itertools::intersperse(names.into_iter().rev(), separator.into()).collect()
+        names.reverse();
+        names.join(&separator.into())
     }
 }
 

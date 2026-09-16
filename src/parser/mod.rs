@@ -212,11 +212,11 @@ fn add_state_description(builder: &mut UmlFsmBuilder, desc: &plantuml::StateDesc
 
 /// Yields each event as `Some`, or a single `None` when the list is empty (a direct,
 /// event-less transition). Lets event-list desugaring and direct transitions share one loop.
-fn events_or_none(events: Vec<Event>) -> std::vec::IntoIter<Option<Event>> {
+fn events_or_none(events: Vec<Event>) -> impl Iterator<Item = Option<Event>> {
     if events.is_empty() {
-        vec![None].into_iter()
+        itertools::Either::Left(std::iter::once(None))
     } else {
-        events.into_iter().map(Some).collect::<Vec<_>>().into_iter()
+        itertools::Either::Right(events.into_iter().map(Some))
     }
 }
 

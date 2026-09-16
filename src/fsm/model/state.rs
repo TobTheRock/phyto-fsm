@@ -21,21 +21,19 @@ pub struct CompletionTransition<'a> {
 }
 
 /// A completion is exactly a `Direct` transition; every other kind yields `None`.
-impl<'a> From<&'a TransitionData> for Option<CompletionTransition<'a>> {
-    fn from(transition: &'a TransitionData) -> Self {
-        match transition {
-            TransitionData::Direct {
-                target,
-                action,
-                guard,
-                ..
-            } => Some(CompletionTransition {
-                target: *target,
-                action: action.as_ref(),
-                guard: guard.as_ref(),
-            }),
-            _ => None,
-        }
+fn completion(transition: &TransitionData) -> Option<CompletionTransition<'_>> {
+    match transition {
+        TransitionData::Direct {
+            target,
+            action,
+            guard,
+            ..
+        } => Some(CompletionTransition {
+            target: *target,
+            action: action.as_ref(),
+            guard: guard.as_ref(),
+        }),
+        _ => None,
     }
 }
 
@@ -53,7 +51,7 @@ impl StateData {
     /// (`Parent --> X`, guarded or not), each a handoff fired when the region completes. A substate
     /// exit fans out over all of them (see `redirect_substate_exits`).
     pub fn completion_transitions(&self) -> impl Iterator<Item = CompletionTransition<'_>> {
-        self.transitions.iter().filter_map(Option::from)
+        self.transitions.iter().filter_map(completion)
     }
 }
 
