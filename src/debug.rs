@@ -1,8 +1,7 @@
 pub fn is_debug() -> bool {
-    thread_local! {
-        static DEBUG: bool = std::env::var("PHYTO_DEBUG").is_ok();
-    }
-    DEBUG.with(|&v| v)
+    static DEBUG: std::sync::LazyLock<bool> =
+        std::sync::LazyLock::new(|| std::env::var("PHYTO_DEBUG").is_ok());
+    *DEBUG
 }
 
 macro_rules! debug {

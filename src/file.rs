@@ -18,27 +18,26 @@ impl FilePath {
     /// 2. Paths starting with `../` are resolved relative to the caller's location
     /// 3. Other relative paths are resolved relative to `src/` in the manifest directory
     pub fn resolve(file_path: &str, span: proc_macro::Span) -> Self {
-        let file_path_str = file_path.trim_matches('"');
-        let file_path = std::path::PathBuf::from(file_path_str);
+        let file_path = std::path::PathBuf::from(file_path);
 
         if file_path.is_absolute() {
             return Self(file_path);
         }
 
         if is_relative_path(&file_path) {
-            return FilePath::resolve_relative_to_caller(file_path_str, span);
+            return FilePath::resolve_relative_to_caller(&file_path, span);
         }
 
-        FilePath::resolve_to_src_dir(file_path_str)
+        FilePath::resolve_to_src_dir(&file_path)
     }
 
-    fn resolve_relative_to_caller(file_path: &str, span: proc_macro::Span) -> Self {
+    fn resolve_relative_to_caller(file_path: &std::path::Path, span: proc_macro::Span) -> Self {
         let caller_file = span.local_file().unwrap_or_default();
         let caller_dir = caller_file.parent().unwrap_or(std::path::Path::new("."));
         Self(caller_dir.join(file_path))
     }
 
-    fn resolve_to_src_dir(file_path: &str) -> Self {
+    fn resolve_to_src_dir(file_path: &std::path::Path) -> Self {
         let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_string());
         let src_path = std::path::PathBuf::from(manifest_dir)
             .join("src")

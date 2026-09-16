@@ -36,14 +36,6 @@ impl TryFrom<&str> for TransitionLabel {
     }
 }
 
-impl TryFrom<&String> for TransitionLabel {
-    type Error = crate::error::Error;
-
-    fn try_from(value: &String) -> Result<Self> {
-        Self::try_from(value.as_str())
-    }
-}
-
 fn parse_transition_description(input: &str) -> Result<TransitionLabel> {
     let mut pairs = UmlParser::parse(Rule::transition_description, input)
         .map_err(|e| ParseError::InvalidTransitionDescription(e.to_string()))?;
@@ -69,13 +61,6 @@ impl TryFrom<&str> for StateDescription {
     type Error = crate::error::Error;
     fn try_from(value: &str) -> Result<Self> {
         parse_state_description(value)
-    }
-}
-
-impl TryFrom<&String> for StateDescription {
-    type Error = crate::error::Error;
-    fn try_from(value: &String) -> Result<Self> {
-        Self::try_from(value.as_str())
     }
 }
 
