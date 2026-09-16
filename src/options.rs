@@ -34,7 +34,9 @@ impl Options {
                 OptionKeyValue::FilePath(path) => ("file_path", file_path.replace(path).is_some()),
                 OptionKeyValue::SubFsms(paths) => ("sub_fsms", sub_fsms.replace(paths).is_some()),
                 OptionKeyValue::Naming(path) => ("naming", naming_path.replace(path).is_some()),
-                OptionKeyValue::LogLevel(level) => ("log_level", log_level.replace(level).is_some()),
+                OptionKeyValue::LogLevel(level) => {
+                    ("log_level", log_level.replace(level).is_some())
+                }
             };
             if was_set {
                 return Err(syn::Error::new(
@@ -201,11 +203,7 @@ mod test {
                 log_level = "error",
                 log_level = "warn"
             ),
-            quote::quote!(
-                file_path = "fsm.puml",
-                naming = "a.tmpl",
-                naming = "b.tmpl"
-            ),
+            quote::quote!(file_path = "fsm.puml", naming = "a.tmpl", naming = "b.tmpl"),
             quote::quote!(
                 file_path = "fsm.puml",
                 sub_fsms = ["a.puml"],
